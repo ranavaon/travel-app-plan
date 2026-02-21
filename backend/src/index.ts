@@ -1,6 +1,8 @@
 import express from 'express';
 import cors from 'cors';
+import bcrypt from 'bcryptjs';
 import { db } from './db.js';
+import { getRequestUserId, signToken, getUserByEmail, getUserById, toAuthUser } from './auth.js';
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3001;
@@ -8,10 +10,51 @@ const PORT = Number(process.env.PORT) || 3001;
 app.use(cors({ origin: true }));
 app.use(express.json({ limit: '10mb' }));
 
-const userId = 'u1'; // MVP: single user
+function genId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2);
+}
+
+// --- Auth ---
+app.post('/api/auth/register', (req, res) => {
+  const { email, password, name } = req.body;
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Email and password required' });
+  }
+  const existing = getUserByEmail(email);
+  if (existing) {
+    return res.status(400).json({ error: 'Email already registered' });
+  }
+  const id = genId();
+  const password_hash = bcrypt.hashSync(password, 10);
+  const created_at = new Date().toISOString();
+  db.prepare(
+    'INSERT INTO users (id, email, password_hash, name, created_at) VALUES (?, ?, ?, ?, ?)'
+  ).run(id, email, password_hash, name ?? null, created_at);
+  const user = toAuthUser(getUserById(id)!);
+  const token = signToken(id);
+  res.status(201).json({ user, token });
+});
+
+app.post('/api/auth/login', (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Email and password required' });
+  }
+  const row = getUserByEmail(email);
+  if (!row) {
+    return res.status(401).json({ error: 'Invalid email or password' });
+  }
+  if (!row.password_hash || !bcrypt.compareSync(password, row.password_hash)) {
+    return res.status(401).json({ error: 'Invalid email or password' });
+  }
+  const user = toAuthUser(row);
+  const token = signToken(row.id);
+  res.json({ user, token });
+});
 
 // --- Full state (for frontend hydration when using API) ---
-app.get('/api/state', (_req, res) => {
+app.get('/api/state', (req, res) => {
+  const userId = getRequestUserId(req);
   const trips = db.prepare('SELECT * FROM trips WHERE user_id = ? ORDER BY created_at DESC').all(userId) as TripRow[];
   const tripIds = new Set(trips.map((t) => t.id));
   const allActivities = db.prepare('SELECT * FROM activities').all() as ActivityRow[];
@@ -30,18 +73,21 @@ app.get('/api/state', (_req, res) => {
 });
 
 // --- Trips ---
-app.get('/api/trips', (_req, res) => {
+app.get('/api/trips', (req, res) => {
+  const userId = getRequestUserId(req);
   const rows = db.prepare('SELECT * FROM trips WHERE user_id = ? ORDER BY created_at DESC').all(userId) as TripRow[];
   res.json(rows.map(toTrip));
 });
 
 app.get('/api/trips/:id', (req, res) => {
+  const userId = getRequestUserId(req);
   const row = db.prepare('SELECT * FROM trips WHERE id = ? AND user_id = ?').get(req.params.id, userId);
   if (!row) return res.status(404).json({ error: 'Not found' });
   res.json(toTrip(row as TripRow));
 });
 
 app.post('/api/trips', (req, res) => {
+  const userId = getRequestUserId(req);
   const { name, startDate, endDate, destination } = req.body;
   const id = genId();
   const now = new Date().toISOString();
@@ -52,6 +98,7 @@ app.post('/api/trips', (req, res) => {
 });
 
 app.put('/api/trips/:id', (req, res) => {
+  const userId = getRequestUserId(req);
   const row = db.prepare('SELECT * FROM trips WHERE id = ? AND user_id = ?').get(req.params.id, userId);
   if (!row) return res.status(404).json({ error: 'Not found' });
   const { name, startDate, endDate, destination } = req.body;
@@ -70,6 +117,7 @@ app.put('/api/trips/:id', (req, res) => {
 });
 
 app.delete('/api/trips/:id', (req, res) => {
+  const userId = getRequestUserId(req);
   const r = db.prepare('DELETE FROM trips WHERE id = ? AND user_id = ?').run(req.params.id, userId);
   if (r.changes === 0) return res.status(404).json({ error: 'Not found' });
   res.status(204).send();
@@ -213,6 +261,7 @@ app.get('/api/trips/:tripId/documents', (req, res) => {
 });
 
 app.post('/api/trips/:tripId/documents', (req, res) => {
+  const userId = getRequestUserId(req);
   const tripId = req.params.tripId;
   const { title, type, fileUrl } = req.body;
   const id = genId();
@@ -244,10 +293,6 @@ app.delete('/api/documents/:id', (req, res) => {
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
 
 // --- Helpers ---
-function genId() {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2);
-}
-
 interface TripRow { id: string; user_id: string; name: string; start_date: string; end_date: string; destination: string | null; created_at: string; updated_at: string; }
 function toTrip(r: TripRow) {
   return { id: r.id, userId: r.user_id, name: r.name, startDate: r.start_date, endDate: r.end_date, destination: r.destination ?? undefined, createdAt: r.created_at, updatedAt: r.updated_at };

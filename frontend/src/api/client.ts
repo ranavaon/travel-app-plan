@@ -5,6 +5,16 @@
 
 const baseUrl = import.meta.env.VITE_API_URL as string | undefined;
 
+let authToken: string | null = null;
+
+export function setAuthToken(token: string | null): void {
+  authToken = token;
+}
+
+export function getAuthToken(): string | null {
+  return authToken;
+}
+
 export function isApiEnabled(): boolean {
   return typeof baseUrl === 'string' && baseUrl.length > 0;
 }
@@ -15,9 +25,11 @@ function url(path: string): string {
 }
 
 async function fetchJson<T>(path: string, options?: RequestInit): Promise<T> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json', ...(options?.headers as Record<string, string>) };
+  if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
   const res = await fetch(url(path), {
     ...options,
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    headers,
   });
   if (res.status === 204) return undefined as T;
   const data = await res.json();
@@ -34,7 +46,15 @@ export type ApiState = {
   documents: import('../types').Document[];
 };
 
+export type AuthUser = { id: string; email: string; name?: string };
+
 export const api = {
+  auth: {
+    login: (email: string, password: string) =>
+      fetchJson<{ user: AuthUser; token: string }>('/api/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
+    register: (email: string, password: string, name?: string) =>
+      fetchJson<{ user: AuthUser; token: string }>('/api/auth/register', { method: 'POST', body: JSON.stringify({ email, password, name }) }),
+  },
   getState: () => fetchJson<ApiState>('/api/state'),
 
   getTrips: () => fetchJson<ApiState['trips']>('/api/trips'),
