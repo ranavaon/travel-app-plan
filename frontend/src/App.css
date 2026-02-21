@@ -1,0 +1,39 @@
+/* Layout: mobile-first, full width on small screens */
+#root {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0.75rem;
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+
+@media (min-width: 480px) {
+  #root {
+    padding: 1rem 1.5rem;
+  }
+}
+
+header {
+  padding: 0.5rem 0;
+  margin-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(128, 128, 128, 0.3);
+}
+
+header a {
+  display: inline-block;
+  padding: 0.5rem 0;
+  min-height: auto;
+  min-width: auto;
+}
+
+main {
+  padding-bottom: env(safe-area-inset-bottom, 1rem);
+}
+
+/* Ensure map and cards don't overflow on narrow screens */
+img,
+video,
+iframe,
+[style*="map"] {
+  max-width: 100%;
+}

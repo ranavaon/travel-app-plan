@@ -1,0 +1,156 @@
+import type { Trip, Accommodation, Attraction, ShoppingItem } from '../types';
+
+export interface Document {
+  id: string;
+  tripId: string;
+  title: string;
+  type?: string;
+  fileUrl?: string;
+}
+
+let accommodationsStore: Accommodation[] = [];
+let attractionsStore: Attraction[] = [];
+let shoppingStore: ShoppingItem[] = [];
+let documentsStore: Document[] = [];
+
+function nextId(): string {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2);
+}
+
+export function getTrips(): Trip[] {
+  return [
+    {
+      id: '1',
+      userId: 'u1',
+      name: 'חופשה בתל אביב',
+      startDate: '2025-03-01',
+      endDate: '2025-03-05',
+      destination: 'תל אביב',
+      createdAt: '2025-01-01T00:00:00Z',
+      updatedAt: '2025-01-01T00:00:00Z',
+    },
+    {
+      id: '2',
+      userId: 'u1',
+      name: 'טיול לאילת',
+      startDate: '2025-04-10',
+      endDate: '2025-04-15',
+      destination: 'אילת',
+      createdAt: '2025-01-02T00:00:00Z',
+      updatedAt: '2025-01-02T00:00:00Z',
+    },
+  ];
+}
+
+export function getAccommodations(tripId: string): Accommodation[] {
+  return accommodationsStore.filter((a) => a.tripId === tripId);
+}
+
+export function addAccommodation(data: {
+  tripId: string;
+  name: string;
+  address: string;
+  checkInDate: string;
+  checkOutDate: string;
+}) {
+  accommodationsStore.push({
+    id: nextId(),
+    tripId: data.tripId,
+    name: data.name,
+    address: data.address,
+    checkInDate: data.checkInDate,
+    checkOutDate: data.checkOutDate,
+  });
+}
+
+export function updateAccommodation(
+  id: string,
+  data: Partial<Pick<Accommodation, 'name' | 'address' | 'checkInDate' | 'checkOutDate'>>
+) {
+  const i = accommodationsStore.findIndex((a) => a.id === id);
+  if (i !== -1) accommodationsStore[i] = { ...accommodationsStore[i], ...data };
+}
+
+export function deleteAccommodation(id: string) {
+  accommodationsStore = accommodationsStore.filter((a) => a.id !== id);
+}
+
+export function getAttractions(tripId: string): Attraction[] {
+  return attractionsStore.filter((a) => a.tripId === tripId);
+}
+
+export function addAttraction(data: {
+  tripId: string;
+  name: string;
+  address: string;
+  dayIndexes: number[];
+}) {
+  attractionsStore.push({
+    id: nextId(),
+    tripId: data.tripId,
+    name: data.name,
+    address: data.address,
+    dayIndexes: data.dayIndexes,
+  });
+}
+
+export function updateAttraction(
+  id: string,
+  data: Partial<Pick<Attraction, 'name' | 'address' | 'dayIndexes'>>
+) {
+  const i = attractionsStore.findIndex((a) => a.id === id);
+  if (i !== -1) attractionsStore[i] = { ...attractionsStore[i], ...data };
+}
+
+export function deleteAttraction(id: string) {
+  attractionsStore = attractionsStore.filter((a) => a.id !== id);
+}
+
+export function getShoppingItems(tripId: string): ShoppingItem[] {
+  return shoppingStore.filter((s) => s.tripId === tripId);
+}
+
+export function addShoppingItem(data: { tripId: string; text: string }) {
+  shoppingStore.push({
+    id: nextId(),
+    tripId: data.tripId,
+    text: data.text,
+    done: false,
+    order: shoppingStore.filter((s) => s.tripId === data.tripId).length,
+  });
+}
+
+export function updateShoppingItem(
+  id: string,
+  data: Partial<Pick<ShoppingItem, 'text' | 'done'>>
+) {
+  const i = shoppingStore.findIndex((s) => s.id === id);
+  if (i !== -1) shoppingStore[i] = { ...shoppingStore[i], ...data };
+}
+
+export function deleteShoppingItem(id: string) {
+  shoppingStore = shoppingStore.filter((s) => s.id !== id);
+}
+
+export function getDocuments(tripId: string): Document[] {
+  return documentsStore.filter((d) => d.tripId === tripId);
+}
+
+export function addDocument(data: {
+  tripId: string;
+  title: string;
+  type?: string;
+  fileUrl?: string;
+}) {
+  documentsStore.push({
+    id: nextId(),
+    tripId: data.tripId,
+    title: data.title,
+    type: data.type,
+    fileUrl: data.fileUrl ?? '',
+  });
+}
+
+export function deleteDocument(id: string) {
+  documentsStore = documentsStore.filter((d) => d.id !== id);
+}
