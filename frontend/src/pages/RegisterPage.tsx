@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { isApiEnabled, api } from '../api/client';
+import { isApiEnabled, getAppleClientId, api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import AppleSignInButton from '../components/AppleSignInButton';
+import GoogleSignInButton from '../components/GoogleSignInButton';
 
 export default function RegisterPage() {
   const [email, setEmail] = useState('');
@@ -39,6 +41,9 @@ export default function RegisterPage() {
   return (
     <div dir="rtl" style={{ maxWidth: 400, margin: '0 auto', padding: 24, textAlign: 'right' }}>
       <h1>הרשמה</h1>
+      <p style={{ fontSize: '0.9em', color: '#666', marginBottom: 16 }}>
+        וודא שה-Backend רץ: <code>cd backend && npm start</code>, ושב־<code>frontend/.env</code> מופיע <code>VITE_API_URL=http://localhost:3001</code>
+      </p>
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <label>
           אימייל
@@ -76,6 +81,18 @@ export default function RegisterPage() {
         <button type="submit" disabled={loading} style={{ padding: 10 }}>
           {loading ? 'נרשם...' : 'הרשם'}
         </button>
+        {isApiEnabled() && (
+          <GoogleSignInButton
+            onSuccess={() => navigate('/', { replace: true })}
+            disabled={loading}
+          />
+        )}
+        {isApiEnabled() && getAppleClientId() && (
+          <AppleSignInButton
+            onSuccess={() => navigate('/', { replace: true })}
+            disabled={loading}
+          />
+        )}
       </form>
       <p style={{ marginTop: 16 }}>
         <Link to="/login">כבר יש חשבון? התחבר</Link>

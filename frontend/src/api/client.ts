@@ -19,6 +19,11 @@ export function isApiEnabled(): boolean {
   return typeof baseUrl === 'string' && baseUrl.length > 0;
 }
 
+const appleClientId = import.meta.env.VITE_APPLE_CLIENT_ID as string | undefined;
+export function getAppleClientId(): string | undefined {
+  return typeof appleClientId === 'string' && appleClientId.length > 0 ? appleClientId : undefined;
+}
+
 function url(path: string): string {
   if (!baseUrl) throw new Error('API not configured');
   return `${baseUrl.replace(/\/$/, '')}${path.startsWith('/') ? path : '/' + path}`;
@@ -27,12 +32,22 @@ function url(path: string): string {
 async function fetchJson<T>(path: string, options?: RequestInit): Promise<T> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json', ...(options?.headers as Record<string, string>) };
   if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
-  const res = await fetch(url(path), {
-    ...options,
-    headers,
-  });
+  let res: Response;
+  try {
+    res = await fetch(url(path), { ...options, headers });
+  } catch (e) {
+    const msg = e instanceof TypeError && e.message === 'Failed to fetch'
+      ? 'לא ניתן להתחבר לשרת. וודא שה-Backend רץ (בתיקיית backend: npm run build && npm start) ושה־VITE_API_URL ב־frontend/.env הוא http://localhost:3001'
+      : (e instanceof Error ? e.message : 'שגיאת רשת');
+    throw new Error(msg);
+  }
   if (res.status === 204) return undefined as T;
-  const data = await res.json();
+  let data: { error?: string };
+  try {
+    data = await res.json();
+  } catch {
+    throw new Error(res.statusText || 'שגיאה מהשרת');
+  }
   if (!res.ok) throw new Error(data?.error ?? res.statusText);
   return data as T;
 }
@@ -54,6 +69,15 @@ export const api = {
       fetchJson<{ user: AuthUser; token: string }>('/api/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
     register: (email: string, password: string, name?: string) =>
       fetchJson<{ user: AuthUser; token: string }>('/api/auth/register', { method: 'POST', body: JSON.stringify({ email, password, name }) }),
+    google: (id_token: string) =>
+      fetchJson<{ user: AuthUser; token: string }>('/api/auth/google', { method: 'POST', body: JSON.stringify({ id_token: id_token }) }),
+    apple: (payload: { id_token?: string; authorization_code?: string } | string) =>
+      fetchJson<{ user: AuthUser; token: string }>('/api/auth/apple', {
+        method: 'POST',
+        body: JSON.stringify(
+          typeof payload === 'string' ? { id_token: payload } : payload
+        ),
+      }),
   },
   updateProfile: (body: { name?: string }) =>
     fetchJson<AuthUser>('/api/users/me', { method: 'PATCH', body: JSON.stringify(body) }),

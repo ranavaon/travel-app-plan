@@ -24,6 +24,11 @@ npm run dev
 
 - `PORT` – פורט (ברירת מחדל 3001)
 - `SQLITE_PATH` – נתיב לקובץ SQLite (ברירת מחדל: `./data.sqlite`)
+- `JWT_SECRET` – סוד לחתימת JWT (חובה בפרודקשן)
+- `GOOGLE_CLIENT_ID` – (אופציונלי) למתן כניסה עם Google
+- `APPLE_CLIENT_ID` – (אופציונלי) Service ID מ־Apple Developer; למתן כניסה עם Apple. אם לא מוגדר, `POST /api/auth/apple` מחזיר 501.
+
+**Sign in with Apple:** נדרש חשבון Apple Developer והגדרת Sign in with Apple (Service ID, Domain, Return URL). ראה [תיעוד Apple](https://developer.apple.com/documentation/sign_in_with_apple).
 
 ## חיבור הפרונט
 
@@ -39,6 +44,7 @@ VITE_API_URL=http://localhost:3001
 ## API (תמצית)
 
 - `GET /api/health` – בדיקת תקינות
+- `POST /api/auth/login`, `POST /api/auth/register`, `POST /api/auth/google`, `POST /api/auth/apple` – אימות (Apple: body `{ id_token }`, מחזיר 501 אם Apple לא מוגדר)
 - `GET /api/state` – כל ה-state של המשתמש (טיולים + פעילויות + לינה + אטרקציות + קניות + מסמכים)
 - `GET/POST /api/trips`, `GET/PUT/DELETE /api/trips/:id`
 - `GET/POST /api/trips/:tripId/activities`, `PUT/DELETE /api/activities/:id`

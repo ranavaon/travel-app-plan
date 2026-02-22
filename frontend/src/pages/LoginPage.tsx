@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { isApiEnabled } from '../api/client';
+import { isApiEnabled, getAppleClientId } from '../api/client';
+import AppleSignInButton from '../components/AppleSignInButton';
+import GoogleSignInButton from '../components/GoogleSignInButton';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -39,6 +41,9 @@ export default function LoginPage() {
   return (
     <div dir="rtl" style={{ maxWidth: 400, margin: '0 auto', padding: 24, textAlign: 'right' }}>
       <h1>התחברות</h1>
+      <p style={{ fontSize: '0.9em', color: '#666', marginBottom: 16 }}>
+        אם ההתחברות נכשלת – וודא שה-Backend רץ (<code>cd backend && npm start</code>) ושה־<code>frontend/.env</code> מכיל <code>VITE_API_URL=http://localhost:3001</code>
+      </p>
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <label>
           אימייל
@@ -66,6 +71,18 @@ export default function LoginPage() {
         <button type="submit" disabled={loading} style={{ padding: 10 }}>
           {loading ? 'מתחבר...' : 'התחבר'}
         </button>
+        {isApiEnabled() && (
+          <GoogleSignInButton
+            onSuccess={() => navigate(from, { replace: true })}
+            disabled={loading}
+          />
+        )}
+        {isApiEnabled() && getAppleClientId() && (
+          <AppleSignInButton
+            onSuccess={() => navigate(from, { replace: true })}
+            disabled={loading}
+          />
+        )}
       </form>
       <p style={{ marginTop: 16 }}>
         <Link to="/register">אין חשבון? הרשם</Link>

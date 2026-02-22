@@ -1,8 +1,11 @@
 import express from 'express';
 import cors from 'cors';
 import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import JwksClient from 'jwks-rsa';
+import { OAuth2Client } from 'google-auth-library';
 import { db } from './db.js';
-import { getRequestUserId, getRequestUserIdOrNull, signToken, getUserByEmail, getUserById, toAuthUser } from './auth.js';
+import { getRequestUserId, getRequestUserIdOrNull, signToken, getUserByEmail, getUserById, toAuthUser, getOrCreateUserForOAuth } from './auth.js';
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3001;
@@ -50,6 +53,90 @@ app.post('/api/auth/login', (req, res) => {
   const user = toAuthUser(row);
   const token = signToken(row.id);
   res.json({ user, token });
+});
+
+app.post('/api/auth/google', async (req, res) => {
+  const googleClientId = process.env.GOOGLE_CLIENT_ID;
+  if (!googleClientId) {
+    return res.status(501).json({ error: 'Google sign-in is not configured' });
+  }
+  const { id_token } = req.body;
+  if (!id_token || typeof id_token !== 'string') {
+    return res.status(400).json({ error: 'id_token required' });
+  }
+  try {
+    const client = new OAuth2Client(googleClientId);
+    const ticket = await client.verifyIdToken({ idToken: id_token, audience: googleClientId });
+    const payload = ticket.getPayload();
+    if (!payload?.email) {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+    const email = payload.email;
+    const name = (payload.name ?? '') || null;
+    let row = getUserByEmail(email);
+    if (!row) {
+      const id = genId();
+      const created_at = new Date().toISOString();
+      db.prepare(
+        'INSERT INTO users (id, email, password_hash, name, created_at) VALUES (?, ?, ?, ?, ?)'
+      ).run(id, email, '', name, created_at);
+      row = getUserById(id)!;
+    }
+    const user = toAuthUser(row);
+    const token = signToken(row.id);
+    res.json({ user, token });
+  } catch {
+    return res.status(401).json({ error: 'Invalid token' });
+  }
+});
+
+const APPLE_CLIENT_ID = process.env.APPLE_CLIENT_ID;
+const APPLE_JWKS_URI = 'https://appleid.apple.com/auth/keys';
+const appleJwksClient = JwksClient({ jwksUri: APPLE_JWKS_URI, cache: true, cacheMaxAge: 600000 });
+
+app.post('/api/auth/apple', (req, res) => {
+  if (!APPLE_CLIENT_ID) {
+    return res.status(501).json({ error: 'Apple Sign In is not configured' });
+  }
+  const id_token = req.body?.id_token;
+  if (!id_token || typeof id_token !== 'string') {
+    return res.status(400).json({ error: 'id_token required' });
+  }
+  const getKey = (header: jwt.JwtHeader, cb: (err: Error | null, key?: string) => void) => {
+    const kid = header.kid;
+    if (!kid) return cb(new Error('Missing kid in token header'));
+    appleJwksClient.getSigningKey(kid, (err, key) => {
+      if (err) return cb(err);
+      if (!key) return cb(new Error('Signing key not found'));
+      const pubKey = key.getPublicKey();
+      cb(null, pubKey);
+    });
+  };
+  jwt.verify(
+    id_token,
+    getKey as unknown as jwt.Secret,
+    {
+      algorithms: ['RS256'],
+      audience: APPLE_CLIENT_ID,
+      issuer: 'https://appleid.apple.com',
+    },
+    (err, payload) => {
+      if (err) {
+        return res.status(401).json({ error: 'Invalid Apple id_token' });
+      }
+      const p = payload as { sub?: string; email?: string; email_verified?: string; name?: string };
+      const sub = p.sub;
+      if (!sub) {
+        return res.status(401).json({ error: 'Invalid Apple id_token: missing sub' });
+      }
+      const email = (p.email && String(p.email).trim()) ? String(p.email).trim() : `apple_${sub}@oauth.local`;
+      const name = (p.name && typeof p.name === 'string') ? p.name : undefined;
+      const row = getOrCreateUserForOAuth(email, name);
+      const user = toAuthUser(row);
+      const token = signToken(row.id);
+      res.json({ user, token });
+    }
+  );
 });
 
 // --- Current user profile (requires auth) ---

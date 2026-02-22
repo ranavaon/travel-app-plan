@@ -57,3 +57,15 @@ export function toAuthUser(r: UserRow): { id: string; email: string; name?: stri
     ...(r.name ? { name: r.name } : {}),
   };
 }
+
+/** Find user by email or create OAuth user (empty password_hash). Returns user row. */
+export function getOrCreateUserForOAuth(email: string, name?: string | null): UserRow {
+  const existing = getUserByEmail(email);
+  if (existing) return existing;
+  const id = Date.now().toString(36) + Math.random().toString(36).slice(2);
+  const created_at = new Date().toISOString();
+  db.prepare(
+    'INSERT INTO users (id, email, password_hash, name, created_at) VALUES (?, ?, ?, ?, ?)'
+  ).run(id, email, '', name ?? null, created_at);
+  return getUserById(id)!;
+}

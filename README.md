@@ -99,7 +99,8 @@ VITE_API_URL=http://localhost:3001
    cd frontend && npm run dev
    ```
 
-כאשר ה־API פעיל, נדרשת **התחברות**: יש להירשם קודם בנתיב `/register`, ואז להתחבר ב־`/login`.
+כאשר ה־API פעיל, נדרשת **התחברות**: יש להירשם קודם בנתיב `/register`, ואז להתחבר ב־`/login`.  
+אפשר גם **התחברות עם Google או Apple** – להגדרה ראו [OAUTH_SETUP.md](./OAUTH_SETUP.md).
 
 ---
 
