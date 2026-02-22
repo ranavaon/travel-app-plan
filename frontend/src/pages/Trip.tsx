@@ -227,8 +227,6 @@ export default function Trip() {
   const pinnedPlaces = id ? getPinnedPlacesForTrip(id) : [];
   const totalSpent = useMemo(() => expenses.reduce((s, e) => s + e.amount, 0), [expenses]);
   const canEdit = !trip?.role || trip.role === 'owner' || trip.role === 'participant';
-
-  const canEdit = !trip?.role || trip.role === 'owner' || trip.role === 'participant';
   const isOwner = trip?.role === 'owner';
   const isViewer = trip?.role === 'viewer';
 
@@ -288,20 +286,6 @@ export default function Trip() {
   const [pinGpsError, setPinGpsError] = useState<string | null>(null);
   const [showExpForm, setShowExpForm] = useState(false);
   const [showPinForm, setShowPinForm] = useState(false);
-
-  const [showFlightForm, setShowFlightForm] = useState(false);
-  const [airline, setAirline] = useState('');
-  const [flightNumber, setFlightNumber] = useState('');
-  const [airportDeparture, setAirportDeparture] = useState('');
-  const [airportArrival, setAirportArrival] = useState('');
-  const [departureDateTime, setDepartureDateTime] = useState('');
-  const [arrivalDateTime, setArrivalDateTime] = useState('');
-  const [gate, setGate] = useState('');
-  const [seat, setSeat] = useState('');
-  const [cabinClass, setCabinClass] = useState('');
-  const [ticketUrl, setTicketUrl] = useState('');
-  const [ticketNotes, setTicketNotes] = useState('');
-  const [flightNotes, setFlightNotes] = useState('');
 
   if (!id) {
     return (
@@ -439,38 +423,6 @@ export default function Trip() {
     setPinLat(null);
     setPinLng(null);
     setShowPinForm(false);
-  };
-
-  const handleAddFlight = (e: React.FormEvent) => {
-    e.preventDefault();
-    addFlight({
-      tripId: id,
-      flightNumber: flightNumber.trim() || undefined,
-      airline: airline.trim() || undefined,
-      airportDeparture: airportDeparture.trim() || undefined,
-      airportArrival: airportArrival.trim() || undefined,
-      departureDateTime: departureDateTime || undefined,
-      arrivalDateTime: arrivalDateTime || undefined,
-      gate: gate.trim() || undefined,
-      seat: seat.trim() || undefined,
-      cabinClass: cabinClass.trim() || undefined,
-      ticketUrl: ticketUrl.trim() || undefined,
-      ticketNotes: ticketNotes.trim() || undefined,
-      notes: flightNotes.trim() || undefined,
-    });
-    setAirline('');
-    setFlightNumber('');
-    setAirportDeparture('');
-    setAirportArrival('');
-    setDepartureDateTime('');
-    setArrivalDateTime('');
-    setGate('');
-    setSeat('');
-    setCabinClass('');
-    setTicketUrl('');
-    setTicketNotes('');
-    setFlightNotes('');
-    setShowFlightForm(false);
   };
 
   const handleGetCurrentLocation = () => {
