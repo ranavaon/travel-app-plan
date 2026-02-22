@@ -11,6 +11,7 @@ const mockGetActivitiesForTrip = vi.fn(() => []);
 const mockGetShoppingItems = vi.fn(() => []);
 const mockGetExpensesForTrip = vi.fn(() => []);
 const mockGetPinnedPlacesForTrip = vi.fn(() => []);
+const mockGetFlightsForTrip = vi.fn(() => []);
 
 vi.mock('../context/TripContext', () => ({
   useTripData: () => ({
@@ -32,6 +33,9 @@ vi.mock('../context/TripContext', () => ({
     getPinnedPlacesForTrip: mockGetPinnedPlacesForTrip,
     addPinnedPlace: vi.fn(),
     deletePinnedPlace: vi.fn(),
+    getFlightsForTrip: mockGetFlightsForTrip,
+    addFlight: vi.fn(),
+    deleteFlight: vi.fn(),
     getDocumentsForTrip: vi.fn(() => []),
     addDocument: vi.fn(),
     updateDocument: vi.fn(),
