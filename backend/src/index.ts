@@ -1,5 +1,7 @@
 import express from 'express';
 import cors from 'cors';
+import { join } from 'path';
+import { existsSync } from 'fs';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import JwksClient from 'jwks-rsa';
@@ -165,6 +167,7 @@ app.get('/api/state', (req, res) => {
   const allDoc = db.prepare('SELECT * FROM documents').all() as DocRow[];
   const allExpenses = db.prepare('SELECT * FROM expenses').all() as ExpenseRow[];
   const allPinned = db.prepare('SELECT * FROM pinned_places').all() as PinnedPlaceRow[];
+  const allFlights = db.prepare('SELECT * FROM flights').all() as FlightRow[];
   res.json({
     trips: trips.map(toTrip),
     activities: allActivities.filter((a) => tripIds.has(a.trip_id)).map(toActivity),
@@ -174,6 +177,7 @@ app.get('/api/state', (req, res) => {
     documents: allDoc.filter((d) => tripIds.has(d.trip_id)).map(toDocument),
     expenses: allExpenses.filter((e) => tripIds.has(e.trip_id)).map(toExpense),
     pinnedPlaces: allPinned.filter((p) => tripIds.has(p.trip_id)).map(toPinnedPlace),
+    flights: allFlights.filter((f) => tripIds.has(f.trip_id)).map(toFlight),
   });
 });
 
@@ -261,6 +265,7 @@ app.get('/api/share/:token', (req, res) => {
   const allAcc = db.prepare('SELECT * FROM accommodations WHERE trip_id = ?').all(tripId) as AccRow[];
   const allAttr = db.prepare('SELECT * FROM attractions WHERE trip_id = ?').all(tripId) as AttrRow[];
   const allShop = db.prepare('SELECT * FROM shopping_items WHERE trip_id = ?').all(tripId) as ShopRow[];
+  const allFlights = db.prepare('SELECT * FROM flights WHERE trip_id = ?').all(tripId) as FlightRow[];
   res.json({
     trip: toTrip(tripRow),
     days: computeDaysFromTrip(tripRow),
@@ -268,6 +273,7 @@ app.get('/api/share/:token', (req, res) => {
     accommodations: allAcc.map(toAccommodation),
     attractions: allAttr.map(toAttraction),
     shoppingItems: allShop.map(toShoppingItem),
+    flights: allFlights.map(toFlight),
   });
 });
 
@@ -512,6 +518,59 @@ app.delete('/api/pinned-places/:id', (req, res) => {
   res.status(204).send();
 });
 
+// --- Flights ---
+app.get('/api/trips/:tripId/flights', (req, res) => {
+  const userId = getRequestUserId(req);
+  const trip = db.prepare('SELECT id FROM trips WHERE id = ? AND user_id = ?').get(req.params.tripId, userId);
+  if (!trip) return res.status(404).json({ error: 'Not found' });
+  const rows = db.prepare('SELECT * FROM flights WHERE trip_id = ?').all(req.params.tripId) as FlightRow[];
+  res.json(rows.map(toFlight));
+});
+
+app.post('/api/trips/:tripId/flights', (req, res) => {
+  const userId = getRequestUserId(req);
+  const tripId = req.params.tripId;
+  const trip = db.prepare('SELECT id FROM trips WHERE id = ? AND user_id = ?').get(tripId, userId);
+  if (!trip) return res.status(404).json({ error: 'Not found' });
+  const body = req.body;
+  const id = genId();
+  db.prepare(
+    `INSERT INTO flights (id, trip_id, flight_number, airline, airport_departure, airport_arrival,
+     departure_datetime, arrival_datetime, gate, ticket_url, ticket_notes, seat, cabin_class, duration_minutes, notes)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(
+    id, tripId,
+    body.flightNumber ?? null, body.airline ?? null, body.airportDeparture ?? null, body.airportArrival ?? null,
+    body.departureDateTime ?? null, body.arrivalDateTime ?? null, body.gate ?? null,
+    body.ticketUrl ?? null, body.ticketNotes ?? null, body.seat ?? null, body.cabinClass ?? null,
+    body.durationMinutes ?? null, body.notes ?? null
+  );
+  res.status(201).json(toFlight(db.prepare('SELECT * FROM flights WHERE id = ?').get(id) as FlightRow));
+});
+
+app.put('/api/flights/:id', (req, res) => {
+  const row = db.prepare('SELECT * FROM flights WHERE id = ?').get(req.params.id);
+  if (!row) return res.status(404).json({ error: 'Not found' });
+  const r = row as FlightRow;
+  const u = req.body;
+  db.prepare(
+    `UPDATE flights SET flight_number = ?, airline = ?, airport_departure = ?, airport_arrival = ?,
+     departure_datetime = ?, arrival_datetime = ?, gate = ?, ticket_url = ?, ticket_notes = ?, seat = ?, cabin_class = ?, duration_minutes = ?, notes = ? WHERE id = ?`
+  ).run(
+    u.flightNumber ?? r.flight_number, u.airline ?? r.airline, u.airportDeparture ?? r.airport_departure, u.airportArrival ?? r.airport_arrival,
+    u.departureDateTime ?? r.departure_datetime, u.arrivalDateTime ?? r.arrival_datetime, u.gate ?? r.gate,
+    u.ticketUrl ?? r.ticket_url, u.ticketNotes ?? r.ticket_notes, u.seat ?? r.seat, u.cabinClass ?? r.cabin_class,
+    u.durationMinutes ?? r.duration_minutes, u.notes ?? r.notes, req.params.id
+  );
+  res.json(toFlight(db.prepare('SELECT * FROM flights WHERE id = ?').get(req.params.id) as FlightRow));
+});
+
+app.delete('/api/flights/:id', (req, res) => {
+  const r = db.prepare('DELETE FROM flights WHERE id = ?').run(req.params.id);
+  if (r.changes === 0) return res.status(404).json({ error: 'Not found' });
+  res.status(204).send();
+});
+
 // Health
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
 
@@ -554,6 +613,21 @@ function toShoppingItem(r: ShopRow) {
 interface DocRow { id: string; trip_id: string; user_id: string; title: string; type: string | null; file_url: string; mime_type: string | null; created_at: string; updated_at: string; }
 function toDocument(r: DocRow) {
   return { id: r.id, tripId: r.trip_id, title: r.title, type: (r.type as 'passport' | 'visa' | 'insurance' | 'booking' | 'other') ?? undefined, fileUrl: r.file_url };
+}
+
+interface FlightRow {
+  id: string; trip_id: string; flight_number: string | null; airline: string | null; airport_departure: string | null; airport_arrival: string | null;
+  departure_datetime: string | null; arrival_datetime: string | null; gate: string | null; ticket_url: string | null; ticket_notes: string | null;
+  seat: string | null; cabin_class: string | null; duration_minutes: number | null; notes: string | null;
+}
+function toFlight(r: FlightRow) {
+  return {
+    id: r.id, tripId: r.trip_id, flightNumber: r.flight_number ?? undefined, airline: r.airline ?? undefined,
+    airportDeparture: r.airport_departure ?? undefined, airportArrival: r.airport_arrival ?? undefined,
+    departureDateTime: r.departure_datetime ?? undefined, arrivalDateTime: r.arrival_datetime ?? undefined,
+    gate: r.gate ?? undefined, ticketUrl: r.ticket_url ?? undefined, ticketNotes: r.ticket_notes ?? undefined,
+    seat: r.seat ?? undefined, cabinClass: r.cabin_class ?? undefined, durationMinutes: r.duration_minutes ?? undefined, notes: r.notes ?? undefined,
+  };
 }
 
 app.listen(PORT, () => {

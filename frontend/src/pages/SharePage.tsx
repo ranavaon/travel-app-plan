@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { api, type SharedTripData } from '../api/client';
+import type { Flight } from '../types';
 
 export default function SharePage() {
   const { token } = useParams<{ token: string }>();
@@ -40,7 +41,7 @@ export default function SharePage() {
     );
   }
 
-  const { trip, days, activities, accommodations, attractions, shoppingItems } = data;
+  const { trip, days, activities, accommodations, attractions, shoppingItems, flights = [] } = data;
   const sectionMargin = 20;
 
   return (
@@ -74,6 +75,22 @@ export default function SharePage() {
             </li>
           );
         })}
+      </ul>
+
+      <h2 style={{ marginTop: sectionMargin }}>טיסות</h2>
+      <ul style={{ listStyle: 'none', paddingRight: 0 }}>
+        {flights.map((f: Flight) => (
+          <li key={f.id} style={{ marginBottom: 8 }}>
+            {(f.airline || f.flightNumber) && <strong>{[f.airline, f.flightNumber].filter(Boolean).join(' ')}</strong>}
+            {(f.airportDeparture || f.airportArrival) && <><br /><span>{f.airportDeparture} → {f.airportArrival}</span></>}
+            {f.departureDateTime && <><br /><small>יציאה: {f.departureDateTime}</small></>}
+            {f.arrivalDateTime && <><br /><small>נחיתה: {f.arrivalDateTime}</small></>}
+            {f.gate && <><br /><small>גייט: {f.gate}</small></>}
+            {f.seat && <><br /><small>מושב: {f.seat}</small></>}
+            {f.ticketUrl && <><br /><a href={f.ticketUrl} target="_blank" rel="noopener noreferrer">קישור לכרטיס</a></>}
+          </li>
+        ))}
+        {flights.length === 0 && <li><em>אין טיסות</em></li>}
       </ul>
 
       <h2 style={{ marginTop: sectionMargin }}>לינה</h2>

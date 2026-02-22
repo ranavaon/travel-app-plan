@@ -4,7 +4,7 @@ import { useTripData } from '../context/TripContext';
 import DayMap, { type MapPoint } from '../components/DayMap';
 import TripDocuments from '../components/TripDocuments';
 import { api, isApiEnabled } from '../api/client';
-import type { Trip, Activity, Accommodation, Attraction, ShoppingItem } from '../types';
+import type { Trip, Activity, Accommodation, Attraction, ShoppingItem, Flight } from '../types';
 
 function buildTripAsText(
   trip: Trip,
@@ -12,7 +12,8 @@ function buildTripAsText(
   activities: Activity[],
   accommodations: Accommodation[],
   attractions: Attraction[],
-  shoppingItems: ShoppingItem[]
+  shoppingItems: ShoppingItem[],
+  flights: Flight[] = []
 ): string {
   const lines: string[] = [trip.name, '='.repeat(trip.name.length), ''];
   if (trip.destination) lines.push(`יעד: ${trip.destination}`, '');
@@ -27,7 +28,15 @@ function buildTripAsText(
     }
     lines.push('');
   }
-  lines.push('לינה', '-'.repeat(20));
+  lines.push('טיסות', '-'.repeat(20));
+  for (const f of flights) {
+    const parts = [f.airline, f.flightNumber].filter(Boolean).join(' ');
+    if (parts) lines.push(`  ${parts}`);
+    if (f.airportDeparture || f.airportArrival) lines.push(`    ${f.airportDeparture ?? ''} → ${f.airportArrival ?? ''}`);
+    if (f.departureDateTime) lines.push(`    יציאה: ${f.departureDateTime}`);
+    if (f.arrivalDateTime) lines.push(`    נחיתה: ${f.arrivalDateTime}`);
+  }
+  lines.push('', 'לינה', '-'.repeat(20));
   for (const a of accommodations) {
     lines.push(`  ${a.name} | ${a.checkInDate} – ${a.checkOutDate}`);
     if (a.address) lines.push(`    ${a.address}`);
@@ -65,17 +74,22 @@ export default function Trip() {
     getPinnedPlacesForTrip,
     addPinnedPlace,
     deletePinnedPlace,
+    getFlightsForTrip,
+    addFlight,
+    deleteFlight,
   } = useTripData();
 
   const trip = id ? getTrip(id) : undefined;
   const days = trip ? getDays(trip) : [];
   const accommodations = id ? getAccommodationsForTrip(id) : [];
   const attractions = id ? getAttractionsForTrip(id) : [];
+  const flights = id ? getFlightsForTrip(id) : [];
   const allActivities = id ? getActivitiesForTrip(id) : [];
   const shoppingItems = id ? getShoppingItems(id) : [];
   const expenses = id ? getExpensesForTrip(id) : [];
   const pinnedPlaces = id ? getPinnedPlacesForTrip(id) : [];
   const totalSpent = useMemo(() => expenses.reduce((s, e) => s + e.amount, 0), [expenses]);
+  const canEdit = !trip?.role || trip.role === 'owner' || trip.role === 'participant';
 
   const allMapPoints = useMemo((): MapPoint[] => {
     const pts: MapPoint[] = [];
@@ -112,6 +126,20 @@ export default function Trip() {
   const [pinAddress, setPinAddress] = useState('');
   const [showExpForm, setShowExpForm] = useState(false);
   const [showPinForm, setShowPinForm] = useState(false);
+
+  const [showFlightForm, setShowFlightForm] = useState(false);
+  const [airline, setAirline] = useState('');
+  const [flightNumber, setFlightNumber] = useState('');
+  const [airportDeparture, setAirportDeparture] = useState('');
+  const [airportArrival, setAirportArrival] = useState('');
+  const [departureDateTime, setDepartureDateTime] = useState('');
+  const [arrivalDateTime, setArrivalDateTime] = useState('');
+  const [gate, setGate] = useState('');
+  const [seat, setSeat] = useState('');
+  const [cabinClass, setCabinClass] = useState('');
+  const [ticketUrl, setTicketUrl] = useState('');
+  const [ticketNotes, setTicketNotes] = useState('');
+  const [flightNotes, setFlightNotes] = useState('');
 
   if (!id) {
     return (
@@ -197,6 +225,38 @@ export default function Trip() {
     setShowPinForm(false);
   };
 
+  const handleAddFlight = (e: React.FormEvent) => {
+    e.preventDefault();
+    addFlight({
+      tripId: id,
+      flightNumber: flightNumber.trim() || undefined,
+      airline: airline.trim() || undefined,
+      airportDeparture: airportDeparture.trim() || undefined,
+      airportArrival: airportArrival.trim() || undefined,
+      departureDateTime: departureDateTime || undefined,
+      arrivalDateTime: arrivalDateTime || undefined,
+      gate: gate.trim() || undefined,
+      seat: seat.trim() || undefined,
+      cabinClass: cabinClass.trim() || undefined,
+      ticketUrl: ticketUrl.trim() || undefined,
+      ticketNotes: ticketNotes.trim() || undefined,
+      notes: flightNotes.trim() || undefined,
+    });
+    setAirline('');
+    setFlightNumber('');
+    setAirportDeparture('');
+    setAirportArrival('');
+    setDepartureDateTime('');
+    setArrivalDateTime('');
+    setGate('');
+    setSeat('');
+    setCabinClass('');
+    setTicketUrl('');
+    setTicketNotes('');
+    setFlightNotes('');
+    setShowFlightForm(false);
+  };
+
   const handleDeleteTrip = () => {
     if (window.confirm('האם למחוק את הטיול? פעולה זו לא ניתנת לביטול.')) {
       deleteTrip(id);
@@ -245,7 +305,7 @@ export default function Trip() {
   const smsUrl = shareUrl ? `sms:?body=${encodeURIComponent(shareUrl)}` : '#';
 
   const handleExport = () => {
-    const lines = buildTripAsText(trip, days, allActivities, accommodations, attractions, shoppingItems);
+    const lines = buildTripAsText(trip, days, allActivities, accommodations, attractions, shoppingItems, flights);
     const blob = new Blob([lines], { type: 'text/plain;charset=utf-8' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -316,8 +376,59 @@ export default function Trip() {
         <DayMap points={allMapPoints} />
       </div>
 
+      <h2 className="section-block">טיסות</h2>
+      <ul className="list-bare">
+        {flights.length === 0 ? (
+          <li style={{ color: 'var(--color-text-muted)', fontSize: '0.95em', marginTop: 'var(--space-xs)' }}>אין טיסות</li>
+        ) : (
+          flights.map((f: Flight) => (
+            <li key={f.id} className="card" style={{ marginBottom: 'var(--space-sm)', padding: 'var(--space-md)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 'var(--space-sm)' }}>
+                <div>
+                  {(f.airline || f.flightNumber) && <strong>{[f.airline, f.flightNumber].filter(Boolean).join(' ')}</strong>}
+                  {(f.airportDeparture || f.airportArrival) && <><br /><span>{f.airportDeparture} → {f.airportArrival}</span></>}
+                  {f.departureDateTime && <><br /><small>יציאה: {f.departureDateTime}</small></>}
+                  {f.arrivalDateTime && <><br /><small>נחיתה: {f.arrivalDateTime}</small></>}
+                  {f.gate && <><br /><small>גייט: {f.gate}</small></>}
+                  {f.seat && <><br /><small>מושב: {f.seat}</small></>}
+                  {f.cabinClass && <><br /><small>מחלקה: {f.cabinClass}</small></>}
+                  {f.ticketUrl && <><br /><a href={f.ticketUrl} target="_blank" rel="noopener noreferrer">קישור לכרטיס</a></>}
+                  {f.ticketNotes && <><br /><small>{f.ticketNotes}</small></>}
+                  {f.notes && <><br /><small>{f.notes}</small></>}
+                </div>
+                <button type="button" onClick={() => deleteFlight(f.id)} className="btn btn-ghost" aria-label="מחק טיסה">מחק</button>
+              </div>
+            </li>
+          ))
+        )}
+      </ul>
+      {canEdit && (
+        !showFlightForm ? (
+          <button type="button" onClick={() => setShowFlightForm(true)} className="btn btn-primary">הוסף טיסה</button>
+        ) : (
+          <form onSubmit={handleAddFlight} style={{ marginTop: 'var(--space-sm)', display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)', maxWidth: 400 }}>
+            <div className="form-group"><label>חברת תעופה</label><input value={airline} onChange={(e) => setAirline(e.target.value)} placeholder="למשל אל על" /></div>
+            <div className="form-group"><label>מספר טיסה</label><input value={flightNumber} onChange={(e) => setFlightNumber(e.target.value)} placeholder="LY 001" /></div>
+            <div className="form-group"><label>נמל יציאה</label><input value={airportDeparture} onChange={(e) => setAirportDeparture(e.target.value)} placeholder="TLV, בן־גוריון" /></div>
+            <div className="form-group"><label>נמל נחיתה</label><input value={airportArrival} onChange={(e) => setAirportArrival(e.target.value)} placeholder="JFK, ניו יורק" /></div>
+            <div className="form-group"><label>זמן יציאה</label><input type="datetime-local" value={departureDateTime} onChange={(e) => setDepartureDateTime(e.target.value)} /></div>
+            <div className="form-group"><label>זמן נחיתה</label><input type="datetime-local" value={arrivalDateTime} onChange={(e) => setArrivalDateTime(e.target.value)} /></div>
+            <div className="form-group"><label>גייט</label><input value={gate} onChange={(e) => setGate(e.target.value)} placeholder="B12" /></div>
+            <div className="form-group"><label>מושב</label><input value={seat} onChange={(e) => setSeat(e.target.value)} placeholder="12A" /></div>
+            <div className="form-group"><label>מחלקה</label><input value={cabinClass} onChange={(e) => setCabinClass(e.target.value)} placeholder="כלכלה / ביזנס" /></div>
+            <div className="form-group"><label>קישור לכרטיס</label><input type="url" value={ticketUrl} onChange={(e) => setTicketUrl(e.target.value)} placeholder="https://..." /></div>
+            <div className="form-group"><label>הערות כרטיס</label><input value={ticketNotes} onChange={(e) => setTicketNotes(e.target.value)} /></div>
+            <div className="form-group"><label>הערות</label><input value={flightNotes} onChange={(e) => setFlightNotes(e.target.value)} /></div>
+            <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
+              <button type="submit" className="btn btn-primary">שמור טיסה</button>
+              <button type="button" onClick={() => setShowFlightForm(false)} className="btn btn-ghost">ביטול</button>
+            </div>
+          </form>
+        )
+      )}
+
       <h2 style={{ marginTop: sectionMarginTop }}>לינה</h2>
-      <ul style={{ listStyle: 'none', paddingRight: 0 }}>
+      <ul className="list-bare">
         {accommodations.length === 0 ? (
           <li style={{ color: '#666', fontSize: '0.95em', marginTop: 4 }}>אין לינה</li>
         ) : (

@@ -1,4 +1,4 @@
-import type { Trip, Activity, Accommodation, Attraction, ShoppingItem, Document, Expense, PinnedPlace } from '../types';
+import type { Trip, Activity, Accommodation, Attraction, ShoppingItem, Document, Expense, PinnedPlace, Flight } from '../types';
 
 const STORAGE_KEY = 'travel-app-state';
 const OFFLINE_QUEUE_KEY = 'travel-app-offline-queue';
@@ -41,6 +41,7 @@ export type PersistedState = {
   documents: Document[];
   expenses: Expense[];
   pinnedPlaces: PinnedPlace[];
+  flights: Flight[];
 };
 
 function isPersistedState(value: unknown): value is PersistedState {
@@ -50,6 +51,7 @@ function isPersistedState(value: unknown): value is PersistedState {
       !Array.isArray(o.attractions) || !Array.isArray(o.shoppingItems) || !Array.isArray(o.documents)) return false;
   if (o.expenses != null && !Array.isArray(o.expenses)) return false;
   if (o.pinnedPlaces != null && !Array.isArray(o.pinnedPlaces)) return false;
+  if (o.flights != null && !Array.isArray(o.flights)) return false;
   return true;
 }
 
@@ -77,6 +79,7 @@ export function loadState(): PersistedState | null {
       ...parsed,
       expenses: parsed.expenses ?? [],
       pinnedPlaces: parsed.pinnedPlaces ?? [],
+      flights: parsed.flights ?? [],
     };
   } catch {
     return null;
@@ -90,6 +93,7 @@ export function saveState(state: PersistedState): void {
       documents: capDocumentSizes(state.documents),
       expenses: state.expenses ?? [],
       pinnedPlaces: state.pinnedPlaces ?? [],
+      flights: state.flights ?? [],
     };
     const json = JSON.stringify(toSave);
     localStorage.setItem(STORAGE_KEY, json);

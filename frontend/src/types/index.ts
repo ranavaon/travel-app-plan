@@ -101,6 +101,25 @@ export interface ShoppingItem {
   category?: 'ציוד' | 'מסמכים' | 'כללי';
 }
 
+/** Optional flight info per trip (e.g. outbound/return). */
+export interface Flight {
+  id: string;
+  tripId: string;
+  flightNumber?: string;
+  airline?: string;
+  airportDeparture?: string;
+  airportArrival?: string;
+  departureDateTime?: string;
+  arrivalDateTime?: string;
+  gate?: string;
+  ticketUrl?: string;
+  ticketNotes?: string;
+  seat?: string;
+  cabinClass?: string;
+  durationMinutes?: number;
+  notes?: string;
+}
+
 export type DocumentType = 'passport' | 'visa' | 'insurance' | 'booking' | 'other';
 
 export interface Document {

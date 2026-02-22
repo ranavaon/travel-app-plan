@@ -6,7 +6,7 @@ import {
   useEffect,
   type ReactNode,
 } from 'react';
-import type { Trip, Day, Activity, Accommodation, Attraction, ShoppingItem, Document, Expense, PinnedPlace } from '../types';
+import type { Trip, Day, Activity, Accommodation, Attraction, ShoppingItem, Document, Expense, PinnedPlace, Flight } from '../types';
 import { getTrips as getMockTrips } from '../data/mockData';
 import { loadState, saveState, loadOfflineQueue, saveOfflineQueue } from '../data/persistence';
 import { isApiEnabled, api } from '../api/client';
@@ -77,6 +77,10 @@ type TripContextValue = {
   getPinnedPlacesForTrip: (tripId: string) => PinnedPlace[];
   addPinnedPlace: (tripId: string, input: { name: string; address?: string; lat?: number; lng?: number }) => PinnedPlace;
   deletePinnedPlace: (id: string) => void;
+  getFlightsForTrip: (tripId: string) => Flight[];
+  addFlight: (input: Omit<Flight, 'id'>) => Flight;
+  updateFlight: (id: string, partial: Partial<Omit<Flight, 'id' | 'tripId'>>) => void;
+  deleteFlight: (id: string) => void;
 };
 
 const TripContext = createContext<TripContextValue | null>(null);
@@ -101,6 +105,7 @@ function getInitialState() {
       documents: loaded.documents,
       expenses: loaded.expenses ?? [],
       pinnedPlaces: loaded.pinnedPlaces ?? [],
+      flights: loaded.flights ?? [],
     };
   }
   return {
@@ -112,6 +117,7 @@ function getInitialState() {
     documents: [] as Document[],
     expenses: [] as Expense[],
     pinnedPlaces: [] as PinnedPlace[],
+    flights: [] as Flight[],
   };
 }
 
@@ -127,6 +133,7 @@ export function TripProvider({ children }: { children: ReactNode }) {
   const [documents, setDocuments] = useState<Document[]>(() => getInitialState().documents);
   const [expenses, setExpenses] = useState<Expense[]>(() => getInitialState().expenses);
   const [pinnedPlaces, setPinnedPlaces] = useState<PinnedPlace[]>(() => getInitialState().pinnedPlaces);
+  const [flights, setFlights] = useState<Flight[]>(() => getInitialState().flights);
 
   useEffect(() => {
     if (isApiEnabled()) return;
@@ -139,8 +146,9 @@ export function TripProvider({ children }: { children: ReactNode }) {
       documents,
       expenses,
       pinnedPlaces,
+      flights,
     });
-  }, [trips, activities, accommodations, attractions, shoppingItems, documents, expenses, pinnedPlaces]);
+  }, [trips, activities, accommodations, attractions, shoppingItems, documents, expenses, pinnedPlaces, flights]);
 
   /** Replay offline queue when back online; then refetch full state. */
   const replayOfflineQueue = useCallback(async () => {
@@ -197,6 +205,7 @@ export function TripProvider({ children }: { children: ReactNode }) {
     setDocuments(state.documents);
     setExpenses(state.expenses ?? []);
     setPinnedPlaces(state.pinnedPlaces ?? []);
+    setFlights(state.flights ?? []);
   }, []);
 
   useEffect(() => {
@@ -213,6 +222,7 @@ export function TripProvider({ children }: { children: ReactNode }) {
       setDocuments(state.documents);
       setExpenses(state.expenses ?? []);
       setPinnedPlaces(state.pinnedPlaces ?? []);
+      setFlights(state.flights ?? []);
       setLoadingState('done');
       replayOfflineQueue();
     }).catch(() => {
@@ -301,6 +311,7 @@ export function TripProvider({ children }: { children: ReactNode }) {
         setDocuments((prev) => prev.filter((d) => d.tripId !== id));
         setExpenses((prev) => prev.filter((e) => e.tripId !== id));
         setPinnedPlaces((prev) => prev.filter((p) => p.tripId !== id));
+        setFlights((prev) => prev.filter((f) => f.tripId !== id));
         return;
       }
       api.deleteTrip(id).then(() => {
@@ -312,6 +323,7 @@ export function TripProvider({ children }: { children: ReactNode }) {
         setDocuments((prev) => prev.filter((d) => d.tripId !== id));
         setExpenses((prev) => prev.filter((e) => e.tripId !== id));
         setPinnedPlaces((prev) => prev.filter((p) => p.tripId !== id));
+        setFlights((prev) => prev.filter((f) => f.tripId !== id));
       }).catch(() => {});
       return;
     }
@@ -323,6 +335,7 @@ export function TripProvider({ children }: { children: ReactNode }) {
     setDocuments((prev) => prev.filter((d) => d.tripId !== id));
     setExpenses((prev) => prev.filter((e) => e.tripId !== id));
     setPinnedPlaces((prev) => prev.filter((p) => p.tripId !== id));
+    setFlights((prev) => prev.filter((f) => f.tripId !== id));
   }, []);
 
   const getActivitiesForDay = useCallback(
@@ -628,6 +641,35 @@ export function TripProvider({ children }: { children: ReactNode }) {
     setPinnedPlaces((prev) => prev.filter((p) => p.id !== id));
   }, []);
 
+  const getFlightsForTrip = useCallback((tripId: string) => flights.filter((f) => f.tripId === tripId), [flights]);
+  const addFlight = useCallback((input: Omit<Flight, 'id'>): Flight => {
+    const id = generateId();
+    const newFlight: Flight = { ...input, id };
+    if (isApiEnabled()) {
+      setFlights((prev) => [...prev, newFlight]);
+      api.createFlight(input.tripId, input)
+        .then((f) => setFlights((prev) => prev.map((x) => (x.id === id ? f : x))))
+        .catch(() => setFlights((prev) => prev.filter((x) => x.id !== id)));
+      return newFlight;
+    }
+    setFlights((prev) => [...prev, newFlight]);
+    return newFlight;
+  }, []);
+  const updateFlight = useCallback((id: string, partial: Partial<Omit<Flight, 'id' | 'tripId'>>) => {
+    if (isApiEnabled()) {
+      api.updateFlight(id, partial).then((f) => setFlights((prev) => prev.map((x) => (x.id === id ? f : x)))).catch(() => {});
+      return;
+    }
+    setFlights((prev) => prev.map((f) => (f.id === id ? { ...f, ...partial } : f)));
+  }, []);
+  const deleteFlight = useCallback((id: string) => {
+    if (isApiEnabled()) {
+      api.deleteFlight(id).then(() => setFlights((prev) => prev.filter((f) => f.id !== id))).catch(() => {});
+      return;
+    }
+    setFlights((prev) => prev.filter((f) => f.id !== id));
+  }, []);
+
   const value: TripContextValue = {
     loadingState,
     getTrips,
@@ -663,6 +705,10 @@ export function TripProvider({ children }: { children: ReactNode }) {
     getPinnedPlacesForTrip,
     addPinnedPlace,
     deletePinnedPlace,
+    getFlightsForTrip,
+    addFlight,
+    updateFlight,
+    deleteFlight,
   };
 
   return (

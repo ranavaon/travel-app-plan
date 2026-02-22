@@ -126,6 +126,26 @@ db.exec(`
     FOREIGN KEY (trip_id) REFERENCES trips(id) ON DELETE CASCADE
   );
   CREATE INDEX IF NOT EXISTS idx_pinned_places_trip ON pinned_places(trip_id);
+
+  CREATE TABLE IF NOT EXISTS flights (
+    id TEXT PRIMARY KEY,
+    trip_id TEXT NOT NULL,
+    flight_number TEXT,
+    airline TEXT,
+    airport_departure TEXT,
+    airport_arrival TEXT,
+    departure_datetime TEXT,
+    arrival_datetime TEXT,
+    gate TEXT,
+    ticket_url TEXT,
+    ticket_notes TEXT,
+    seat TEXT,
+    cabin_class TEXT,
+    duration_minutes INTEGER,
+    notes TEXT,
+    FOREIGN KEY (trip_id) REFERENCES trips(id) ON DELETE CASCADE
+  );
+  CREATE INDEX IF NOT EXISTS idx_flights_trip ON flights(trip_id);
 `);
 
 // Migrations: add new columns to trips if missing
