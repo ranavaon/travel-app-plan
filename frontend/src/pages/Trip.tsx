@@ -249,6 +249,20 @@ export default function Trip() {
   const [attrReverseGeocoding, setAttrReverseGeocoding] = useState(false);
   const [showAttrForm, setShowAttrForm] = useState(false);
 
+  const [showFlightForm, setShowFlightForm] = useState(false);
+  const [flightNumber, setFlightNumber] = useState('');
+  const [airline, setAirline] = useState('');
+  const [airportDeparture, setAirportDeparture] = useState('');
+  const [airportArrival, setAirportArrival] = useState('');
+  const [departureDateTime, setDepartureDateTime] = useState('');
+  const [arrivalDateTime, setArrivalDateTime] = useState('');
+  const [gate, setGate] = useState('');
+  const [ticketUrl, setTicketUrl] = useState('');
+  const [ticketNotes, setTicketNotes] = useState('');
+  const [seat, setSeat] = useState('');
+  const [cabinClass, setCabinClass] = useState('');
+  const [flightNotes, setFlightNotes] = useState('');
+
   const [newItemText, setNewItemText] = useState('');
   const [expDesc, setExpDesc] = useState('');
   const [expAmount, setExpAmount] = useState('');
@@ -325,6 +339,39 @@ export default function Trip() {
       setAttrReverseGeocoding(false);
       if (addr) setAttrAddress(addr);
     }
+  };
+
+  const handleAddFlight = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!id) return;
+    addFlight({
+      tripId: id,
+      flightNumber: flightNumber.trim() || undefined,
+      airline: airline.trim() || undefined,
+      airportDeparture: airportDeparture.trim() || undefined,
+      airportArrival: airportArrival.trim() || undefined,
+      departureDateTime: departureDateTime.trim() || undefined,
+      arrivalDateTime: arrivalDateTime.trim() || undefined,
+      gate: gate.trim() || undefined,
+      ticketUrl: ticketUrl.trim() || undefined,
+      ticketNotes: ticketNotes.trim() || undefined,
+      seat: seat.trim() || undefined,
+      cabinClass: cabinClass.trim() || undefined,
+      notes: flightNotes.trim() || undefined,
+    });
+    setFlightNumber('');
+    setAirline('');
+    setAirportDeparture('');
+    setAirportArrival('');
+    setDepartureDateTime('');
+    setArrivalDateTime('');
+    setGate('');
+    setTicketUrl('');
+    setTicketNotes('');
+    setSeat('');
+    setCabinClass('');
+    setFlightNotes('');
+    setShowFlightForm(false);
   };
 
   const handleAddShoppingItem = (e: React.FormEvent) => {
@@ -526,6 +573,7 @@ export default function Trip() {
             <button type="button" onClick={() => setShowMembersModal(true)} className="btn btn-secondary">
               משתתפים
             </button>
+            {' '}
             {!shareUrl ? (
               <button type="button" onClick={handleShare} disabled={shareStatus === 'loading'} className="btn btn-secondary">
                 {shareStatus === 'loading' ? '...' : shareStatus === 'error' ? 'שגיאה' : 'שתף קישור'}
