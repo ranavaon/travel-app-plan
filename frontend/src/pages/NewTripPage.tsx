@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useTripData } from '../context/TripContext';
+import { tripCreateSchema, getFirstZodError } from '../schemas';
 
 export default function NewTripPage() {
   const navigate = useNavigate();
@@ -9,19 +10,26 @@ export default function NewTripPage() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [destination, setDestination] = useState('');
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !startDate || !endDate) return;
-    if (new Date(startDate) > new Date(endDate)) {
-      alert('תאריך סיום חייב להיות אחרי תאריך התחלה');
-      return;
-    }
-    const trip = await addTrip({
+    setError('');
+    const result = tripCreateSchema.safeParse({
       name: name.trim(),
       startDate,
       endDate,
       destination: destination.trim() || undefined,
+    });
+    if (!result.success) {
+      setError(getFirstZodError(result.error));
+      return;
+    }
+    const trip = await addTrip({
+      name: result.data.name,
+      startDate: result.data.startDate,
+      endDate: result.data.endDate,
+      destination: result.data.destination,
     });
     navigate(`/trip/${trip.id}`);
   };
@@ -70,6 +78,7 @@ export default function NewTripPage() {
             style={{ display: 'block', width: '100%', marginTop: 4 }}
           />
         </div>
+        {error && <p style={{ color: 'crimson', margin: 0 }}>{error}</p>}
         <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
           <button type="submit">צור טיול</button>
           <button type="button" onClick={() => navigate('/')}>ביטול</button>
