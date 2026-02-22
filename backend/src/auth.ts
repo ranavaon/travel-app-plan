@@ -17,6 +17,19 @@ export function getRequestUserId(req: Request): string {
   }
 }
 
+/** Returns userId when request has a valid Bearer JWT; otherwise null (for routes that require login). */
+export function getRequestUserIdOrNull(req: Request): string | null {
+  const auth = req.headers.authorization;
+  const token = auth?.startsWith('Bearer ') ? auth.slice(7) : null;
+  if (!token) return null;
+  try {
+    const payload = jwt.verify(token, JWT_SECRET) as { userId: string };
+    return payload.userId ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export function signToken(userId: string): string {
   return jwt.sign({ userId }, JWT_SECRET, { expiresIn: '7d' });
 }

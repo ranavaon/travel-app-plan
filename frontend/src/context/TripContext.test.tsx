@@ -1,6 +1,11 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { TripProvider, useTripData } from './TripContext';
+
+vi.mock('../api/client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../api/client')>();
+  return { ...actual, isApiEnabled: () => false };
+});
 
 function TestConsumer() {
   const { getTrips, addTrip } = useTripData();

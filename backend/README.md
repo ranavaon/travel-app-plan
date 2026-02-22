@@ -60,3 +60,16 @@ MVP כרגע עם משתמש יחיד (`userId = 'u1'`).
 5. **משתני סביבה:** הוסף `SQLITE_PATH=./data.sqlite` (ו־`JWT_SECRET` אם יתווסף אימות). `PORT` לרוב מוגדר אוטומטית על ידי הפלטפורמה.
 
 **הערה:** SQLite הוא קובץ על הדיסק. בסביבות עם filesystem חולף (למשל Railway) הנתונים עלולים לא להישמר בין הפעלות — אלא אם משתמשים ב־volume או עוברים ל־PostgreSQL בהמשך.
+
+## הרצה עם Docker
+
+```bash
+docker build -t travel-backend .
+docker run -p 3001:3001 -e JWT_SECRET=xxx travel-backend
+```
+
+לשמירת נתוני SQLite בין הפעלות, הוסף volume:
+
+```bash
+docker run -p 3001:3001 -e JWT_SECRET=xxx -v $(pwd)/data.sqlite:/app/data.sqlite travel-backend
+```

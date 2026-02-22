@@ -55,6 +55,8 @@ export const api = {
     register: (email: string, password: string, name?: string) =>
       fetchJson<{ user: AuthUser; token: string }>('/api/auth/register', { method: 'POST', body: JSON.stringify({ email, password, name }) }),
   },
+  updateProfile: (body: { name?: string }) =>
+    fetchJson<AuthUser>('/api/users/me', { method: 'PATCH', body: JSON.stringify(body) }),
   getState: () => fetchJson<ApiState>('/api/state'),
 
   getTrips: () => fetchJson<ApiState['trips']>('/api/trips'),

@@ -1,4 +1,4 @@
-import { Routes, Route, Link } from 'react-router-dom';
+import { Routes, Route, Link, Navigate, useLocation, Outlet } from 'react-router-dom';
 import { TripProvider } from './context/TripContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { isApiEnabled } from './api/client';
@@ -9,7 +9,18 @@ import NewTripPage from './pages/NewTripPage';
 import EditTripPage from './pages/EditTripPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
+import ProfilePage from './pages/ProfilePage';
 import './App.css';
+
+/** When API is enabled, requires login; otherwise renders children. */
+function ProtectedRoute() {
+  const { currentUser } = useAuth();
+  const location = useLocation();
+  if (isApiEnabled() && !currentUser) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+  return <Outlet />;
+}
 
 function HeaderLinks() {
   const { currentUser, logout } = useAuth();
@@ -18,6 +29,7 @@ function HeaderLinks() {
     <nav style={{ marginRight: 'auto', display: 'flex', gap: 12, alignItems: 'center' }}>
       {currentUser ? (
         <>
+          <Link to="/profile">פרופיל</Link>
           <span style={{ fontSize: '0.9em', opacity: 0.9 }}>{currentUser.email}</span>
           <button type="button" onClick={logout} style={{ padding: '4px 10px', cursor: 'pointer' }}>
             התנתק
@@ -42,13 +54,16 @@ function AppContent() {
       </header>
       <main>
         <Routes>
-          <Route path="/" element={<Home />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
-          <Route path="/trip/new" element={<NewTripPage />} />
-          <Route path="/trip/:id/edit" element={<EditTripPage />} />
-          <Route path="/trip/:id" element={<Trip />} />
-          <Route path="/trip/:id/day/:dayIndex" element={<DayView />} />
+          <Route element={<ProtectedRoute />}>
+            <Route path="/" element={<Home />} />
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/trip/new" element={<NewTripPage />} />
+            <Route path="/trip/:id/edit" element={<EditTripPage />} />
+            <Route path="/trip/:id" element={<Trip />} />
+            <Route path="/trip/:id/day/:dayIndex" element={<DayView />} />
+          </Route>
         </Routes>
       </main>
     </>

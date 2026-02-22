@@ -29,6 +29,8 @@ npm run dev
 - `/` – דף בית (הטיולים שלי)
 - `/trip/:id` – תצוגת טיול בודד
 - `/trip/:id/day/:dayIndex` – מבט יום בטיול
+- `/register` – הרשמה
+- `/login` – התחברות
 
 ### העלאה (Deployment)
 
@@ -79,6 +81,37 @@ VITE_API_URL=http://localhost:3001
 הרץ את הפרונט (`npm run dev` מתוך `frontend/`). כאשר המשתנה מוגדר, האפליקציה תשתמש ב-API במקום ב-localStorage.
 
 פרטים נוספים: [backend/README.md](./backend/README.md).
+
+### הרצת המערכת המלאה
+
+כדי להריץ את המערכת עם Backend ו־Frontend יחד:
+
+1. **Backend** – הרץ את השרת:
+   ```bash
+   cd backend && npm run build && npm start
+   ```
+2. **Frontend** – צור קובץ `frontend/.env` עם:
+   ```
+   VITE_API_URL=http://localhost:3001
+   ```
+   ואז הרץ את הפרונט:
+   ```bash
+   cd frontend && npm run dev
+   ```
+
+כאשר ה־API פעיל, נדרשת **התחברות**: יש להירשם קודם בנתיב `/register`, ואז להתחבר ב־`/login`.
+
+---
+
+## פריסה (Production)
+
+- **Frontend** – בנה עם כתובת ה־API של השרת המועלה. לדוגמה:
+  ```
+  VITE_API_URL=https://your-backend-url.com
+  ```
+  הרץ `npm run build` מתוך `frontend/` — האפליקציה הבנויה תפנה ל־Backend הפרוס.
+- **Backend** – הוראות פריסה (Railway, Render, Docker ועוד) ב־[backend/README.md](./backend/README.md).
+- **CORS** – יש להגדיר ב־Backend שה־origin של הפרונט הפרוס מורשה (CORS מאפשר את כתובת הפרונט).
 
 ---
 

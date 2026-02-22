@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import bcrypt from 'bcryptjs';
 import { db } from './db.js';
-import { getRequestUserId, signToken, getUserByEmail, getUserById, toAuthUser } from './auth.js';
+import { getRequestUserId, getRequestUserIdOrNull, signToken, getUserByEmail, getUserById, toAuthUser } from './auth.js';
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3001;
@@ -50,6 +50,20 @@ app.post('/api/auth/login', (req, res) => {
   const user = toAuthUser(row);
   const token = signToken(row.id);
   res.json({ user, token });
+});
+
+// --- Current user profile (requires auth) ---
+app.patch('/api/users/me', (req, res) => {
+  const userId = getRequestUserIdOrNull(req);
+  if (!userId) return res.status(401).json({ error: 'Authentication required' });
+  const row = getUserById(userId);
+  if (!row) return res.status(404).json({ error: 'User not found' });
+  const { name } = req.body;
+  if (name !== undefined) {
+    db.prepare('UPDATE users SET name = ? WHERE id = ?').run(typeof name === 'string' ? name : null, userId);
+  }
+  const updated = getUserById(userId)!;
+  res.json(toAuthUser(updated));
 });
 
 // --- Full state (for frontend hydration when using API) ---

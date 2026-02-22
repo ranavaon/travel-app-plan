@@ -1,32 +1,41 @@
 # העלאת הפרויקט ל-GitHub
 
-## שיטה 1: דרך האתר + Git
+הריפו המקומי כבר מחובר ל־**origin**:  
+`https://github.com/ranavon/travel-app-plan.git`
 
-1. **צור ריפו חדש ב-GitHub**
-   - היכנס ל-[github.com](https://github.com) ולחץ על **New repository**.
-   - שם הריפו: `travel-app-plan` (או שם אחר).
-   - **אל תסמן** "Add a README file" – צור ריפו **ריק**.
-   - לחץ **Create repository**.
+נשאר רק **להעלות** (push). פתח טרמינל **במחשב שלך** בתיקיית הפרויקט והרץ:
 
-2. **חבר את הפרויקט לריפו והעלה**
-   בהרצה מתוך תיקיית הפרויקט (היכן ש־`.git` נמצא):
-
-   ```bash
-   git remote add origin https://github.com/<USERNAME>/travel-app-plan.git
-   git branch -M main
-   git push -u origin main
-   ```
-
-   החלף את `<USERNAME>` בשם המשתמש שלך ב-GitHub. אם השתמשת בשם ריפו אחר, החלף גם את `travel-app-plan` בשם הריפו.
+```bash
+cd /Users/rann/travel-app-plan
+git push -u origin main
+```
 
 ---
 
-## שיטה 2: עם GitHub CLI (`gh`)
+## אם מתבקשים פרטי התחברות
 
-אם מותקן אצלך [GitHub CLI](https://cli.github.com/):
+### אופציה א': HTTPS עם Personal Access Token (מומלץ)
+
+1. ב־GitHub: **Settings** → **Developer settings** → **Personal access tokens** → **Tokens (classic)**.
+2. **Generate new token** – סמן scope `repo`.
+3. העתק את ה־token.
+4. בהרצת `git push`:
+   - **Username:** השם המשתמש ב-GitHub שלך (למשל `ranavon`).
+   - **Password:** הדבק את ה־**token** (לא את סיסמת החשבון).
+
+### אופציה ב': SSH (אם הגדרת מפתחות SSH ב-GitHub)
+
+החלף את ה־remote ל־SSH והעלה:
 
 ```bash
-gh repo create travel-app-plan --private --source=. --push
+git remote set-url origin git@github.com:ranavon/travel-app-plan.git
+git push -u origin main
 ```
 
-זה ייצור ריפו פרטי בשם `travel-app-plan`, יחבר אותו לתיקייה הנוכחית ויעלה את הענף `main`.
+---
+
+## בדיקה
+
+אחרי push מוצלח, נכנס ל־  
+https://github.com/ranavon/travel-app-plan  
+ואמור להופיע שם כל הקוד.
