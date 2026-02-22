@@ -19,9 +19,29 @@ export interface Trip {
   destination?: string;
   createdAt: string;
   updatedAt: string;
+  tags?: string[];
+  budget?: number;
   accommodations?: Accommodation[];
   attractions?: Attraction[];
   shoppingItems?: ShoppingItem[];
+}
+
+export interface Expense {
+  id: string;
+  tripId: string;
+  description: string;
+  amount: number;
+  createdAt: string;
+}
+
+export interface PinnedPlace {
+  id: string;
+  tripId: string;
+  name: string;
+  address?: string;
+  lat?: number;
+  lng?: number;
+  createdAt: string;
 }
 
 /** Virtual/computed: one day in a trip (from startDate + index) */
