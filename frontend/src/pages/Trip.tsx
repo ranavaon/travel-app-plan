@@ -205,12 +205,27 @@ export default function Trip() {
   };
 
   const [shareStatus, setShareStatus] = useState<'idle' | 'loading' | 'copied' | 'error'>('idle');
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+
   const handleShare = async () => {
     if (!isApiEnabled()) return;
     setShareStatus('loading');
     try {
       const { shareToken } = await api.createShareToken(id);
-      const shareUrl = `${window.location.origin}${window.location.pathname.replace(/\/trip\/[^/]+$/, '')}/share/${shareToken}`;
+      const url = `${window.location.origin}${window.location.pathname.replace(/\/trip\/[^/]+$/, '')}/share/${shareToken}`;
+      await navigator.clipboard.writeText(url);
+      setShareUrl(url);
+      setShareStatus('copied');
+      setTimeout(() => setShareStatus('idle'), 3000);
+    } catch {
+      setShareStatus('error');
+      setTimeout(() => setShareStatus('idle'), 3000);
+    }
+  };
+
+  const handleCopyShareUrl = async () => {
+    if (!shareUrl) return;
+    try {
       await navigator.clipboard.writeText(shareUrl);
       setShareStatus('copied');
       setTimeout(() => setShareStatus('idle'), 3000);
@@ -219,6 +234,15 @@ export default function Trip() {
       setTimeout(() => setShareStatus('idle'), 3000);
     }
   };
+
+  const shareSubject = `${trip.name} – קישור לצפייה בטיול`;
+  const mailtoUrl = shareUrl
+    ? `mailto:?subject=${encodeURIComponent(shareSubject)}&body=${encodeURIComponent(shareUrl)}`
+    : '#';
+  const whatsappUrl = shareUrl
+    ? `https://wa.me/?text=${encodeURIComponent(shareUrl)}`
+    : '#';
+  const smsUrl = shareUrl ? `sms:?body=${encodeURIComponent(shareUrl)}` : '#';
 
   const handleExport = () => {
     const lines = buildTripAsText(trip, days, allActivities, accommodations, attractions, shoppingItems);
@@ -246,9 +270,21 @@ export default function Trip() {
         {isApiEnabled() && (
           <>
             {' '}
-            <button type="button" onClick={handleShare} disabled={shareStatus === 'loading'}>
-              {shareStatus === 'loading' ? '...' : shareStatus === 'copied' ? 'הקישור הועתק!' : shareStatus === 'error' ? 'שגיאה' : 'שתף קישור'}
-            </button>
+            {!shareUrl ? (
+              <button type="button" onClick={handleShare} disabled={shareStatus === 'loading'}>
+                {shareStatus === 'loading' ? '...' : shareStatus === 'error' ? 'שגיאה' : 'שתף קישור'}
+              </button>
+            ) : (
+              <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+                <button type="button" onClick={handleCopyShareUrl}>
+                  {shareStatus === 'copied' ? 'הועתק!' : 'העתק קישור'}
+                </button>
+                <a href={mailtoUrl} style={{ marginLeft: 8 }} target="_blank" rel="noopener noreferrer">שליחה במייל</a>
+                <a href={whatsappUrl} style={{ marginLeft: 8 }} target="_blank" rel="noopener noreferrer">וואטסאפ</a>
+                <a href={smsUrl} style={{ marginLeft: 8 }}>SMS</a>
+                <button type="button" onClick={() => setShareUrl(null)} style={{ marginLeft: 8, opacity: 0.8 }}>סגור</button>
+              </span>
+            )}
           </>
         )}
         {' '}
