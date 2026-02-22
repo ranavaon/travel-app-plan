@@ -102,16 +102,25 @@ VITE_API_URL=http://localhost:3001
 כאשר ה־API פעיל, נדרשת **התחברות**: יש להירשם קודם בנתיב `/register`, ואז להתחבר ב־`/login`.  
 אפשר גם **התחברות עם Google או Apple** – להגדרה ראו [OAUTH_SETUP.md](./OAUTH_SETUP.md).
 
+### משתני סביבה
+
+- **פרונט:** `VITE_API_URL` – כתובת ה־API (למשל `http://localhost:3001` בפיתוח).
+- **Backend:** רשימה מלאה והסבר ב־[backend/README.md](./backend/README.md) ובקובץ [backend/.env.example](./backend/.env.example). בין היתר:
+  - `JWT_SECRET` – סוד לחתימת JWT (חובה בפרודקשן)
+  - `GOOGLE_CLIENT_ID` – (אופציונלי) להתחברות עם Google
+  - `APPLE_CLIENT_ID` – (אופציונלי) ל־Sign in with Apple  
+  להגדרת OAuth (Google/Apple) ראו [OAUTH_SETUP.md](./OAUTH_SETUP.md).
+
 ---
 
 ## פריסה (Production)
 
-- **Frontend** – בנה עם כתובת ה־API של השרת המועלה. לדוגמה:
+- **Frontend** – בהעלאה לפרודקשן יש להגדיר **`VITE_API_URL`** לכתובת ה־API הפרודה (למשל `https://your-backend-url.com`). בנה עם המשתנה הזה — לדוגמה:
   ```
   VITE_API_URL=https://your-backend-url.com
   ```
-  הרץ `npm run build` מתוך `frontend/` — האפליקציה הבנויה תפנה ל־Backend הפרוס.
-- **Backend** – הוראות פריסה (Railway, Render, Docker ועוד) ב־[backend/README.md](./backend/README.md).
+  הרץ `npm run build` מתוך `frontend/` (או השתמש ב־build של Netlify/Vercel עם המשתנה בהגדרות הפרויקט). האפליקציה הבנויה תפנה ל־Backend הפרוס.
+- **Backend** – ניתן להריץ עם Docker (קיים `Dockerfile` בתיקיית `backend/`). הוראות פריסה מפורטות (Railway, Render, Docker ועוד) ב־[backend/README.md](./backend/README.md).
 - **CORS** – יש להגדיר ב־Backend שה־origin של הפרונט הפרוס מורשה (CORS מאפשר את כתובת הפרונט).
 
 ---
