@@ -35,6 +35,7 @@ vi.mock('../context/TripContext', () => ({
     deletePinnedPlace: vi.fn(),
     getFlightsForTrip: mockGetFlightsForTrip,
     addFlight: vi.fn(),
+    updateFlight: vi.fn(),
     deleteFlight: vi.fn(),
     getDocumentsForTrip: vi.fn(() => []),
     addDocument: vi.fn(),
