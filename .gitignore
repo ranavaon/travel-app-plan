@@ -24,6 +24,10 @@ Thumbs.db
 *.swo
 *~
 
+# E2E / Playwright
+frontend/playwright-report/
+frontend/test-results/
+
 # Logs
 logs/
 *.log

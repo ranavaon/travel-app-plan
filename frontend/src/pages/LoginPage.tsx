@@ -18,7 +18,7 @@ export default function LoginPage() {
 
   if (!isApiEnabled()) {
     return (
-      <div dir="rtl" style={{ maxWidth: 400, margin: '0 auto', padding: 24, textAlign: 'right' }}>
+      <div dir="rtl" className="page-wrap" style={{ maxWidth: 400 }}>
         <p>התחברות זמינה רק כאשר ה-API מוגדר (VITE_API_URL).</p>
         <Link to="/">חזרה לדף הבית</Link>
       </div>
@@ -45,36 +45,34 @@ export default function LoginPage() {
   };
 
   return (
-    <div dir="rtl" style={{ maxWidth: 400, margin: '0 auto', padding: 24, textAlign: 'right' }}>
+    <div dir="rtl" className="page-wrap" style={{ maxWidth: 400 }}>
       <h1>התחברות</h1>
-      <p style={{ fontSize: '0.9em', color: '#666', marginBottom: 16 }}>
+      <p style={{ fontSize: '0.9em', color: 'var(--color-text-muted)', marginBottom: 'var(--space-md)' }}>
         אם ההתחברות נכשלת – וודא שה-Backend רץ (<code>cd backend && npm start</code>) ושה־<code>frontend/.env</code> מכיל <code>VITE_API_URL=http://localhost:3001</code>
       </p>
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <label>
-          אימייל
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+        <div className="form-group">
+          <label>אימייל</label>
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
             autoComplete="email"
-            style={{ display: 'block', width: '100%', marginTop: 4, padding: 8 }}
           />
-        </label>
-        <label>
-          סיסמה
+        </div>
+        <div className="form-group">
+          <label>סיסמה</label>
           <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
             autoComplete="current-password"
-            style={{ display: 'block', width: '100%', marginTop: 4, padding: 8 }}
           />
-        </label>
-        {error && <p style={{ color: 'crimson', margin: 0 }}>{error}</p>}
-        <button type="submit" disabled={loading} style={{ padding: 10 }}>
+        </div>
+        {error && <p style={{ color: 'var(--color-error)', margin: 0 }}>{error}</p>}
+        <button type="submit" disabled={loading} className="btn btn-primary">
           {loading ? 'מתחבר...' : 'התחבר'}
         </button>
         {isApiEnabled() && (
@@ -90,7 +88,7 @@ export default function LoginPage() {
           />
         )}
       </form>
-      <p style={{ marginTop: 16 }}>
+      <p style={{ marginTop: 'var(--space-md)' }}>
         <Link to="/register">אין חשבון? הרשם</Link>
       </p>
       <p>

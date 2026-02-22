@@ -10,6 +10,7 @@ import type { Trip, Day, Activity, Accommodation, Attraction, ShoppingItem, Docu
 import { getTrips as getMockTrips } from '../data/mockData';
 import { loadState, saveState, loadOfflineQueue, saveOfflineQueue } from '../data/persistence';
 import { isApiEnabled, api } from '../api/client';
+import { useAuth } from './AuthContext';
 
 export type AddTripInput = {
   name: string;
@@ -116,6 +117,7 @@ function getInitialState() {
 }
 
 export function TripProvider({ children }: { children: ReactNode }) {
+  const { token: authToken } = useAuth();
   const [loadingState, setLoadingState] = useState<LoadingState>(() =>
     isApiEnabled() ? 'loading' : 'done'
   );
@@ -201,6 +203,10 @@ export function TripProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!isApiEnabled()) return;
+    if (!authToken) {
+      setLoadingState('done');
+      return;
+    }
     let cancelled = false;
     setLoadingState('loading');
     api.getState().then((state) => {
@@ -219,7 +225,7 @@ export function TripProvider({ children }: { children: ReactNode }) {
       if (!cancelled) setLoadingState('done');
     });
     return () => { cancelled = true; };
-  }, [replayOfflineQueue]);
+  }, [replayOfflineQueue, authToken]);
 
   useEffect(() => {
     if (!isApiEnabled()) return;
@@ -592,14 +598,17 @@ export function TripProvider({ children }: { children: ReactNode }) {
 
   const getExpensesForTrip = useCallback((tripId: string) => expenses.filter((e) => e.tripId === tripId), [expenses]);
   const addExpense = useCallback((tripId: string, input: { description: string; amount: number }): Expense => {
+    const optimisticId = generateId();
+    const optimistic: Expense = { id: optimisticId, tripId, ...input, createdAt: new Date().toISOString() };
     if (isApiEnabled()) {
-      api.addExpense(tripId, input).then((e) => setExpenses((prev) => [...prev, e])).catch(() => {});
-      return { id: generateId(), tripId, ...input, createdAt: new Date().toISOString() };
+      setExpenses((prev) => [...prev, optimistic]);
+      api.addExpense(tripId, input)
+        .then((e) => setExpenses((prev) => prev.map((x) => (x.id === optimisticId ? e : x))))
+        .catch(() => { /* keep optimistic expense so list and total stay visible */ });
+      return optimistic;
     }
-    const id = generateId();
-    const e: Expense = { id, tripId, ...input, createdAt: new Date().toISOString() };
-    setExpenses((prev) => [...prev, e]);
-    return e;
+    setExpenses((prev) => [...prev, optimistic]);
+    return optimistic;
   }, []);
   const deleteExpense = useCallback((id: string) => {
     if (isApiEnabled()) {
@@ -611,14 +620,24 @@ export function TripProvider({ children }: { children: ReactNode }) {
 
   const getPinnedPlacesForTrip = useCallback((tripId: string) => pinnedPlaces.filter((p) => p.tripId === tripId), [pinnedPlaces]);
   const addPinnedPlace = useCallback((tripId: string, input: { name: string; address?: string; lat?: number; lng?: number }): PinnedPlace => {
+    const optimisticId = generateId();
+    const optimistic: PinnedPlace = { id: optimisticId, tripId, ...input, createdAt: new Date().toISOString() };
     if (isApiEnabled()) {
-      api.addPinnedPlace(tripId, input).then((p) => setPinnedPlaces((prev) => [...prev, p])).catch(() => {});
-      return { id: generateId(), tripId, ...input, createdAt: new Date().toISOString() };
+      setPinnedPlaces((prev) => [...prev, optimistic]);
+      api.addPinnedPlace(tripId, input)
+        .then((p) => {
+          setPinnedPlaces((prev) => {
+            const idx = prev.findIndex((x) => x.id === optimisticId);
+            if (idx >= 0) return prev.map((x, i) => (i === idx ? p : x));
+            if (prev.some((x) => x.id === p.id)) return prev;
+            return [...prev, p];
+          });
+        })
+        .catch(() => setPinnedPlaces((prev) => prev.filter((x) => x.id !== optimisticId)));
+      return optimistic;
     }
-    const id = generateId();
-    const p: PinnedPlace = { id, tripId, ...input, createdAt: new Date().toISOString() };
-    setPinnedPlaces((prev) => [...prev, p]);
-    return p;
+    setPinnedPlaces((prev) => [...prev, optimistic]);
+    return optimistic;
   }, []);
   const deletePinnedPlace = useCallback((id: string) => {
     if (isApiEnabled()) {

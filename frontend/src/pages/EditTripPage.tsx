@@ -17,7 +17,7 @@ export default function EditTripPage() {
 
   if (!trip) {
     return (
-      <div dir="rtl" style={{ padding: 16 }}>
+      <div dir="rtl" className="page-wrap">
         <p>טיול לא נמצא.</p>
         <Link to="/">חזרה לרשימת הטיולים</Link>
       </div>
@@ -39,35 +39,35 @@ export default function EditTripPage() {
   };
 
   return (
-    <div dir="rtl" style={{ maxWidth: 480, margin: '0 auto', padding: 16 }}>
+    <div dir="rtl" className="page-wrap" style={{ maxWidth: 480 }}>
       <h1>עריכת טיול</h1>
       <p><Link to={`/trip/${trip.id}`}>חזרה לטיול</Link></p>
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 16 }}>
-        <label>
-          שם הטיול
-          <input value={name} onChange={(e) => setName(e.target.value)} required style={{ display: 'block', width: '100%', marginTop: 4, padding: 8 }} />
-        </label>
-        <label>
-          תאריך התחלה
-          <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} required style={{ display: 'block', width: '100%', marginTop: 4, padding: 8 }} />
-        </label>
-        <label>
-          תאריך סיום
-          <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} required style={{ display: 'block', width: '100%', marginTop: 4, padding: 8 }} />
-        </label>
-        <label>
-          יעד (אופציונלי)
-          <input value={destination} onChange={(e) => setDestination(e.target.value)} style={{ display: 'block', width: '100%', marginTop: 4, padding: 8 }} />
-        </label>
-        <label>
-          תגיות (מופרדות בפסיק, למשל: אירופה, משפחה)
-          <input value={tagsStr} onChange={(e) => setTagsStr(e.target.value)} placeholder="תגית1, תגית2" style={{ display: 'block', width: '100%', marginTop: 4, padding: 8 }} />
-        </label>
-        <label>
-          תקציב מתוכנן (אופציונלי)
-          <input type="number" min="0" step="any" value={budget} onChange={(e) => setBudget(e.target.value)} placeholder="למשל 5000" style={{ display: 'block', width: '100%', marginTop: 4, padding: 8 }} />
-        </label>
-        <button type="submit" style={{ padding: 10 }}>שמור שינויים</button>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)', marginTop: 'var(--space-md)' }}>
+        <div className="form-group">
+          <label>שם הטיול</label>
+          <input value={name} onChange={(e) => setName(e.target.value)} required />
+        </div>
+        <div className="form-group">
+          <label>תאריך התחלה</label>
+          <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} required />
+        </div>
+        <div className="form-group">
+          <label>תאריך סיום</label>
+          <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} required />
+        </div>
+        <div className="form-group">
+          <label>יעד (אופציונלי)</label>
+          <input value={destination} onChange={(e) => setDestination(e.target.value)} />
+        </div>
+        <div className="form-group">
+          <label>תגיות (מופרדות בפסיק, למשל: אירופה, משפחה)</label>
+          <input value={tagsStr} onChange={(e) => setTagsStr(e.target.value)} placeholder="תגית1, תגית2" />
+        </div>
+        <div className="form-group">
+          <label>תקציב מתוכנן (אופציונלי)</label>
+          <input type="number" min="0" step="any" value={budget} onChange={(e) => setBudget(e.target.value)} placeholder="למשל 5000" />
+        </div>
+        <button type="submit" className="btn btn-primary">שמור שינויים</button>
       </form>
     </div>
   );
