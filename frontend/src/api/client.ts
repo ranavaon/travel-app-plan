@@ -52,6 +52,30 @@ async function fetchJson<T>(path: string, options?: RequestInit): Promise<T> {
   return data as T;
 }
 
+/** Fetch without auth (for public share link). */
+async function fetchJsonPublic<T>(path: string): Promise<T> {
+  if (!baseUrl) throw new Error('API not configured');
+  const u = `${baseUrl.replace(/\/$/, '')}${path.startsWith('/') ? path : '/' + path}`;
+  const res = await fetch(u, { headers: { Accept: 'application/json' } });
+  let data: { error?: string };
+  try {
+    data = await res.json();
+  } catch {
+    throw new Error(res.statusText || 'שגיאה מהשרת');
+  }
+  if (!res.ok) throw new Error(data?.error ?? res.statusText);
+  return data as T;
+}
+
+export type SharedTripData = {
+  trip: import('../types').Trip;
+  days: { date: string; dayIndex: number }[];
+  activities: import('../types').Activity[];
+  accommodations: import('../types').Accommodation[];
+  attractions: import('../types').Attraction[];
+  shoppingItems: import('../types').ShoppingItem[];
+};
+
 export type ApiState = {
   trips: import('../types').Trip[];
   activities: import('../types').Activity[];
@@ -59,6 +83,8 @@ export type ApiState = {
   attractions: import('../types').Attraction[];
   shoppingItems: import('../types').ShoppingItem[];
   documents: import('../types').Document[];
+  expenses: import('../types').Expense[];
+  pinnedPlaces: import('../types').PinnedPlace[];
 };
 
 export type AuthUser = { id: string; email: string; name?: string };
@@ -85,11 +111,16 @@ export const api = {
 
   getTrips: () => fetchJson<ApiState['trips']>('/api/trips'),
   getTrip: (id: string) => fetchJson<ApiState['trips'][0] | { error: string }>(`/api/trips/${id}`),
-  createTrip: (body: { name: string; startDate: string; endDate: string; destination?: string }) =>
+  createTrip: (body: { name: string; startDate: string; endDate: string; destination?: string; tags?: string[]; budget?: number }) =>
     fetchJson<ApiState['trips'][0]>('/api/trips', { method: 'POST', body: JSON.stringify(body) }),
-  updateTrip: (id: string, body: Partial<{ name: string; startDate: string; endDate: string; destination: string }>) =>
+  updateTrip: (id: string, body: Partial<{ name: string; startDate: string; endDate: string; destination: string; tags: string[]; budget: number }>) =>
     fetchJson<ApiState['trips'][0]>(`/api/trips/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
   deleteTrip: (id: string) => fetchJson<void>(`/api/trips/${id}`, { method: 'DELETE' }),
+
+  createShareToken: (tripId: string) =>
+    fetchJson<{ shareToken: string }>(`/api/trips/${tripId}/share`, { method: 'POST' }),
+  getSharedTrip: (token: string) =>
+    fetchJsonPublic<SharedTripData>(`/api/share/${token}`),
 
   getActivities: (tripId: string) => fetchJson<ApiState['activities']>(`/api/trips/${tripId}/activities`),
   createActivity: (tripId: string, body: Omit<import('../types').Activity, 'id'>) =>
@@ -125,4 +156,14 @@ export const api = {
   updateDocument: (id: string, body: Partial<Pick<import('../types').Document, 'title' | 'type'>>) =>
     fetchJson<ApiState['documents'][0]>(`/api/documents/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
   deleteDocument: (id: string) => fetchJson<void>(`/api/documents/${id}`, { method: 'DELETE' }),
+
+  getExpenses: (tripId: string) => fetchJson<ApiState['expenses']>(`/api/trips/${tripId}/expenses`),
+  addExpense: (tripId: string, body: { description: string; amount: number }) =>
+    fetchJson<ApiState['expenses'][0]>(`/api/trips/${tripId}/expenses`, { method: 'POST', body: JSON.stringify(body) }),
+  deleteExpense: (id: string) => fetchJson<void>(`/api/expenses/${id}`, { method: 'DELETE' }),
+
+  getPinnedPlaces: (tripId: string) => fetchJson<ApiState['pinnedPlaces']>(`/api/trips/${tripId}/pinned-places`),
+  addPinnedPlace: (tripId: string, body: { name: string; address?: string; lat?: number; lng?: number }) =>
+    fetchJson<ApiState['pinnedPlaces'][0]>(`/api/trips/${tripId}/pinned-places`, { method: 'POST', body: JSON.stringify(body) }),
+  deletePinnedPlace: (id: string) => fetchJson<void>(`/api/pinned-places/${id}`, { method: 'DELETE' }),
 };

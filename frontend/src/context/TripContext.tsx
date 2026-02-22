@@ -6,9 +6,9 @@ import {
   useEffect,
   type ReactNode,
 } from 'react';
-import type { Trip, Day, Activity, Accommodation, Attraction, ShoppingItem, Document } from '../types';
+import type { Trip, Day, Activity, Accommodation, Attraction, ShoppingItem, Document, Expense, PinnedPlace } from '../types';
 import { getTrips as getMockTrips } from '../data/mockData';
-import { loadState, saveState } from '../data/persistence';
+import { loadState, saveState, loadOfflineQueue, saveOfflineQueue } from '../data/persistence';
 import { isApiEnabled, api } from '../api/client';
 
 export type AddTripInput = {
@@ -16,9 +16,11 @@ export type AddTripInput = {
   startDate: string;
   endDate: string;
   destination?: string;
+  tags?: string[];
+  budget?: number;
 };
 
-export type UpdateTripInput = Partial<AddTripInput>;
+export type UpdateTripInput = Partial<AddTripInput & { tags: string[]; budget: number }>;
 
 function getDateForDayIndex(startDate: string, dayIndex: number): string {
   const d = new Date(startDate + 'T12:00:00');
@@ -38,7 +40,10 @@ function computeDays(trip: Trip): Day[] {
   return days;
 }
 
+export type LoadingState = 'idle' | 'loading' | 'done';
+
 type TripContextValue = {
+  loadingState: LoadingState;
   getTrips: () => Trip[];
   addTrip: (input: AddTripInput) => Trip | Promise<Trip>;
   updateTrip: (id: string, partial: UpdateTripInput) => void;
@@ -66,6 +71,12 @@ type TripContextValue = {
   addDocument: (input: { tripId: string; title: string; type?: Document['type']; file: File }) => Promise<Document>;
   updateDocument: (id: string, partial: Partial<Pick<Document, 'title' | 'type'>>) => void;
   deleteDocument: (id: string) => void;
+  getExpensesForTrip: (tripId: string) => Expense[];
+  addExpense: (tripId: string, input: { description: string; amount: number }) => Expense;
+  deleteExpense: (id: string) => void;
+  getPinnedPlacesForTrip: (tripId: string) => PinnedPlace[];
+  addPinnedPlace: (tripId: string, input: { name: string; address?: string; lat?: number; lng?: number }) => PinnedPlace;
+  deletePinnedPlace: (id: string) => void;
 };
 
 const TripContext = createContext<TripContextValue | null>(null);
@@ -88,6 +99,8 @@ function getInitialState() {
       attractions: loaded.attractions,
       shoppingItems: loaded.shoppingItems,
       documents: loaded.documents,
+      expenses: loaded.expenses ?? [],
+      pinnedPlaces: loaded.pinnedPlaces ?? [],
     };
   }
   return {
@@ -97,16 +110,23 @@ function getInitialState() {
     attractions: [] as Attraction[],
     shoppingItems: [] as ShoppingItem[],
     documents: [] as Document[],
+    expenses: [] as Expense[],
+    pinnedPlaces: [] as PinnedPlace[],
   };
 }
 
 export function TripProvider({ children }: { children: ReactNode }) {
+  const [loadingState, setLoadingState] = useState<LoadingState>(() =>
+    isApiEnabled() ? 'loading' : 'done'
+  );
   const [trips, setTrips] = useState<Trip[]>(() => getInitialState().trips);
   const [activities, setActivities] = useState<Activity[]>(() => getInitialState().activities);
   const [accommodations, setAccommodations] = useState<Accommodation[]>(() => getInitialState().accommodations);
   const [attractions, setAttractions] = useState<Attraction[]>(() => getInitialState().attractions);
   const [shoppingItems, setShoppingItems] = useState<ShoppingItem[]>(() => getInitialState().shoppingItems);
   const [documents, setDocuments] = useState<Document[]>(() => getInitialState().documents);
+  const [expenses, setExpenses] = useState<Expense[]>(() => getInitialState().expenses);
+  const [pinnedPlaces, setPinnedPlaces] = useState<PinnedPlace[]>(() => getInitialState().pinnedPlaces);
 
   useEffect(() => {
     if (isApiEnabled()) return;
@@ -117,12 +137,72 @@ export function TripProvider({ children }: { children: ReactNode }) {
       attractions,
       shoppingItems,
       documents,
+      expenses,
+      pinnedPlaces,
     });
-  }, [trips, activities, accommodations, attractions, shoppingItems, documents]);
+  }, [trips, activities, accommodations, attractions, shoppingItems, documents, expenses, pinnedPlaces]);
+
+  /** Replay offline queue when back online; then refetch full state. */
+  const replayOfflineQueue = useCallback(async () => {
+    if (!isApiEnabled() || !navigator.onLine) return;
+    const queue = loadOfflineQueue();
+    if (queue.length === 0) return;
+    const idMap: Record<string, string> = {}; // optimistic trip id -> server trip id
+    let i = 0;
+    while (i < queue.length) {
+      const item = queue[i];
+      const payload = item.payload as Record<string, unknown>;
+      try {
+        switch (item.op) {
+          case 'createTrip': {
+            const { _optimisticId, ...input } = payload as AddTripInput & { _optimisticId?: string };
+            const t = await api.createTrip(input as AddTripInput);
+            if (_optimisticId) idMap[_optimisticId] = t.id;
+            break;
+          }
+          case 'updateTrip':
+            await api.updateTrip(payload.id as string, payload.partial as UpdateTripInput);
+            break;
+          case 'deleteTrip':
+            await api.deleteTrip(payload.id as string);
+            break;
+          case 'createActivity': {
+            const act = payload as Omit<Activity, 'id'>;
+            const tripId = idMap[act.tripId] ?? act.tripId;
+            await api.createActivity(tripId, act);
+            break;
+          }
+          case 'updateActivity':
+            await api.updateActivity(payload.id as string, payload.partial as Partial<Activity>);
+            break;
+          case 'deleteActivity':
+            await api.deleteActivity(payload.id as string);
+            break;
+          default:
+            break;
+        }
+        queue.splice(i, 1);
+        saveOfflineQueue(queue);
+      } catch {
+        saveOfflineQueue(queue);
+        return;
+      }
+    }
+    const state = await api.getState();
+    setTrips(state.trips);
+    setActivities(state.activities);
+    setAccommodations(state.accommodations);
+    setAttractions(state.attractions);
+    setShoppingItems(state.shoppingItems);
+    setDocuments(state.documents);
+    setExpenses(state.expenses ?? []);
+    setPinnedPlaces(state.pinnedPlaces ?? []);
+  }, []);
 
   useEffect(() => {
     if (!isApiEnabled()) return;
     let cancelled = false;
+    setLoadingState('loading');
     api.getState().then((state) => {
       if (cancelled) return;
       setTrips(state.trips);
@@ -131,9 +211,22 @@ export function TripProvider({ children }: { children: ReactNode }) {
       setAttractions(state.attractions);
       setShoppingItems(state.shoppingItems);
       setDocuments(state.documents);
-    }).catch(() => { /* ignore */ });
+      setExpenses(state.expenses ?? []);
+      setPinnedPlaces(state.pinnedPlaces ?? []);
+      setLoadingState('done');
+      replayOfflineQueue();
+    }).catch(() => {
+      if (!cancelled) setLoadingState('done');
+    });
     return () => { cancelled = true; };
-  }, []);
+  }, [replayOfflineQueue]);
+
+  useEffect(() => {
+    if (!isApiEnabled()) return;
+    const onOnline = () => replayOfflineQueue();
+    window.addEventListener('online', onOnline);
+    return () => window.removeEventListener('online', onOnline);
+  }, [replayOfflineQueue]);
 
   const getTrips = useCallback(() => trips, [trips]);
   const getTrip = useCallback((id: string) => trips.find((t) => t.id === id), [trips]);
@@ -141,6 +234,16 @@ export function TripProvider({ children }: { children: ReactNode }) {
 
   const addTrip = useCallback((input: AddTripInput): Trip | Promise<Trip> => {
     if (isApiEnabled()) {
+      if (!navigator.onLine) {
+        const id = generateId();
+        const createdAt = nowIso();
+        const newTrip: Trip = { id, userId: 'u1', name: input.name, startDate: input.startDate, endDate: input.endDate, destination: input.destination, createdAt, updatedAt: createdAt };
+        const queue = loadOfflineQueue();
+        queue.push({ id: generateId(), op: 'createTrip', payload: { ...input, _optimisticId: id } });
+        saveOfflineQueue(queue);
+        setTrips((prev) => [...prev, newTrip]);
+        return newTrip;
+      }
       return api.createTrip(input).then((t) => {
         setTrips((prev) => [...prev, t]);
         return t;
@@ -165,6 +268,13 @@ export function TripProvider({ children }: { children: ReactNode }) {
 
   const updateTrip = useCallback((id: string, partial: UpdateTripInput) => {
     if (isApiEnabled()) {
+      if (!navigator.onLine) {
+        const queue = loadOfflineQueue();
+        queue.push({ id: generateId(), op: 'updateTrip', payload: { id, partial } });
+        saveOfflineQueue(queue);
+        setTrips((prev) => prev.map((t) => (t.id === id ? { ...t, ...partial } : t)));
+        return;
+      }
       api.updateTrip(id, partial).then((t) => {
         setTrips((prev) => prev.map((x) => (x.id === id ? t : x)));
       }).catch(() => {});
@@ -179,6 +289,20 @@ export function TripProvider({ children }: { children: ReactNode }) {
 
   const deleteTrip = useCallback((id: string) => {
     if (isApiEnabled()) {
+      if (!navigator.onLine) {
+        const queue = loadOfflineQueue();
+        queue.push({ id: generateId(), op: 'deleteTrip', payload: { id } });
+        saveOfflineQueue(queue);
+        setTrips((prev) => prev.filter((t) => t.id !== id));
+        setActivities((prev) => prev.filter((a) => a.tripId !== id));
+        setAccommodations((prev) => prev.filter((a) => a.tripId !== id));
+        setAttractions((prev) => prev.filter((a) => a.tripId !== id));
+        setShoppingItems((prev) => prev.filter((s) => s.tripId !== id));
+        setDocuments((prev) => prev.filter((d) => d.tripId !== id));
+        setExpenses((prev) => prev.filter((e) => e.tripId !== id));
+        setPinnedPlaces((prev) => prev.filter((p) => p.tripId !== id));
+        return;
+      }
       api.deleteTrip(id).then(() => {
         setTrips((prev) => prev.filter((t) => t.id !== id));
         setActivities((prev) => prev.filter((a) => a.tripId !== id));
@@ -186,6 +310,8 @@ export function TripProvider({ children }: { children: ReactNode }) {
         setAttractions((prev) => prev.filter((a) => a.tripId !== id));
         setShoppingItems((prev) => prev.filter((s) => s.tripId !== id));
         setDocuments((prev) => prev.filter((d) => d.tripId !== id));
+        setExpenses((prev) => prev.filter((e) => e.tripId !== id));
+        setPinnedPlaces((prev) => prev.filter((p) => p.tripId !== id));
       }).catch(() => {});
       return;
     }
@@ -195,6 +321,8 @@ export function TripProvider({ children }: { children: ReactNode }) {
     setAttractions((prev) => prev.filter((a) => a.tripId !== id));
     setShoppingItems((prev) => prev.filter((s) => s.tripId !== id));
     setDocuments((prev) => prev.filter((d) => d.tripId !== id));
+    setExpenses((prev) => prev.filter((e) => e.tripId !== id));
+    setPinnedPlaces((prev) => prev.filter((p) => p.tripId !== id));
   }, []);
 
   const getActivitiesForDay = useCallback(
@@ -235,11 +363,19 @@ export function TripProvider({ children }: { children: ReactNode }) {
 
   const addActivity = useCallback((activity: Omit<Activity, 'id'>): Activity => {
     if (isApiEnabled()) {
+      const id = generateId();
+      const newActivity: Activity = { ...activity, id };
+      if (!navigator.onLine) {
+        const queue = loadOfflineQueue();
+        queue.push({ id: generateId(), op: 'createActivity', payload: activity });
+        saveOfflineQueue(queue);
+        setActivities((prev) => [...prev, newActivity]);
+        return newActivity;
+      }
       api.createActivity(activity.tripId, activity).then((a) => {
         setActivities((prev) => [...prev, a]);
       }).catch(() => {});
-      const id = generateId();
-      return { ...activity, id };
+      return newActivity;
     }
     const id = generateId();
     const newActivity: Activity = { ...activity, id };
@@ -249,6 +385,15 @@ export function TripProvider({ children }: { children: ReactNode }) {
 
   const updateActivity = useCallback((id: string, partial: Partial<Activity>) => {
     if (isApiEnabled()) {
+      if (!navigator.onLine) {
+        const queue = loadOfflineQueue();
+        queue.push({ id: generateId(), op: 'updateActivity', payload: { id, partial } });
+        saveOfflineQueue(queue);
+        setActivities((prev) =>
+          prev.map((a) => (a.id === id ? { ...a, ...partial } : a))
+        );
+        return;
+      }
       api.updateActivity(id, partial).then((a) => {
         setActivities((prev) => prev.map((x) => (x.id === id ? a : x)));
       }).catch(() => {});
@@ -261,6 +406,13 @@ export function TripProvider({ children }: { children: ReactNode }) {
 
   const deleteActivity = useCallback((id: string) => {
     if (isApiEnabled()) {
+      if (!navigator.onLine) {
+        const queue = loadOfflineQueue();
+        queue.push({ id: generateId(), op: 'deleteActivity', payload: { id } });
+        saveOfflineQueue(queue);
+        setActivities((prev) => prev.filter((a) => a.id !== id));
+        return;
+      }
       api.deleteActivity(id).then(() => {
         setActivities((prev) => prev.filter((a) => a.id !== id));
       }).catch(() => {});
@@ -438,7 +590,46 @@ export function TripProvider({ children }: { children: ReactNode }) {
     setDocuments((prev) => prev.filter((d) => d.id !== id));
   }, []);
 
+  const getExpensesForTrip = useCallback((tripId: string) => expenses.filter((e) => e.tripId === tripId), [expenses]);
+  const addExpense = useCallback((tripId: string, input: { description: string; amount: number }): Expense => {
+    if (isApiEnabled()) {
+      api.addExpense(tripId, input).then((e) => setExpenses((prev) => [...prev, e])).catch(() => {});
+      return { id: generateId(), tripId, ...input, createdAt: new Date().toISOString() };
+    }
+    const id = generateId();
+    const e: Expense = { id, tripId, ...input, createdAt: new Date().toISOString() };
+    setExpenses((prev) => [...prev, e]);
+    return e;
+  }, []);
+  const deleteExpense = useCallback((id: string) => {
+    if (isApiEnabled()) {
+      api.deleteExpense(id).then(() => setExpenses((prev) => prev.filter((e) => e.id !== id))).catch(() => {});
+      return;
+    }
+    setExpenses((prev) => prev.filter((e) => e.id !== id));
+  }, []);
+
+  const getPinnedPlacesForTrip = useCallback((tripId: string) => pinnedPlaces.filter((p) => p.tripId === tripId), [pinnedPlaces]);
+  const addPinnedPlace = useCallback((tripId: string, input: { name: string; address?: string; lat?: number; lng?: number }): PinnedPlace => {
+    if (isApiEnabled()) {
+      api.addPinnedPlace(tripId, input).then((p) => setPinnedPlaces((prev) => [...prev, p])).catch(() => {});
+      return { id: generateId(), tripId, ...input, createdAt: new Date().toISOString() };
+    }
+    const id = generateId();
+    const p: PinnedPlace = { id, tripId, ...input, createdAt: new Date().toISOString() };
+    setPinnedPlaces((prev) => [...prev, p]);
+    return p;
+  }, []);
+  const deletePinnedPlace = useCallback((id: string) => {
+    if (isApiEnabled()) {
+      api.deletePinnedPlace(id).then(() => setPinnedPlaces((prev) => prev.filter((p) => p.id !== id))).catch(() => {});
+      return;
+    }
+    setPinnedPlaces((prev) => prev.filter((p) => p.id !== id));
+  }, []);
+
   const value: TripContextValue = {
+    loadingState,
     getTrips,
     addTrip,
     updateTrip,
@@ -466,6 +657,12 @@ export function TripProvider({ children }: { children: ReactNode }) {
     addDocument,
     updateDocument,
     deleteDocument,
+    getExpensesForTrip,
+    addExpense,
+    deleteExpense,
+    getPinnedPlacesForTrip,
+    addPinnedPlace,
+    deletePinnedPlace,
   };
 
   return (
