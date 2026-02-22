@@ -52,8 +52,9 @@ export default function LoginPage() {
       </p>
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
         <div className="form-group">
-          <label>אימייל</label>
+          <label htmlFor="login-email">אימייל</label>
           <input
+            id="login-email"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -62,8 +63,9 @@ export default function LoginPage() {
           />
         </div>
         <div className="form-group">
-          <label>סיסמה</label>
+          <label htmlFor="login-password">סיסמה</label>
           <input
+            id="login-password"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}

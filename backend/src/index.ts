@@ -598,6 +598,8 @@ app.get('/api/trips/:tripId/expenses', (req, res) => {
 app.post('/api/trips/:tripId/expenses', (req, res) => {
   const userId = getRequestUserId(req);
   const tripId = req.params.tripId;
+  const tripExists = db.prepare('SELECT 1 FROM trips WHERE id = ?').get(tripId);
+  if (!tripExists) return res.status(404).json({ error: 'Not found' });
   if (!canEditTrip(tripId, userId)) return res.status(403).json({ error: 'Only owner or participant can edit' });
   const { description, amount } = req.body;
   const id = genId();
