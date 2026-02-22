@@ -163,6 +163,8 @@ app.get('/api/state', (req, res) => {
   const allAttr = db.prepare('SELECT * FROM attractions').all() as AttrRow[];
   const allShop = db.prepare('SELECT * FROM shopping_items').all() as ShopRow[];
   const allDoc = db.prepare('SELECT * FROM documents').all() as DocRow[];
+  const allExpenses = db.prepare('SELECT * FROM expenses').all() as ExpenseRow[];
+  const allPinned = db.prepare('SELECT * FROM pinned_places').all() as PinnedPlaceRow[];
   res.json({
     trips: trips.map(toTrip),
     activities: allActivities.filter((a) => tripIds.has(a.trip_id)).map(toActivity),
@@ -170,6 +172,8 @@ app.get('/api/state', (req, res) => {
     attractions: allAttr.filter((a) => tripIds.has(a.trip_id)).map(toAttraction),
     shoppingItems: allShop.filter((s) => tripIds.has(s.trip_id)).map(toShoppingItem),
     documents: allDoc.filter((d) => tripIds.has(d.trip_id)).map(toDocument),
+    expenses: allExpenses.filter((e) => tripIds.has(e.trip_id)).map(toExpense),
+    pinnedPlaces: allPinned.filter((p) => tripIds.has(p.trip_id)).map(toPinnedPlace),
   });
 });
 
@@ -189,12 +193,13 @@ app.get('/api/trips/:id', (req, res) => {
 
 app.post('/api/trips', (req, res) => {
   const userId = getRequestUserId(req);
-  const { name, startDate, endDate, destination } = req.body;
+  const { name, startDate, endDate, destination, tags, budget } = req.body;
   const id = genId();
   const now = new Date().toISOString();
+  const tagsStr = Array.isArray(tags) ? JSON.stringify(tags) : null;
   db.prepare(
-    'INSERT INTO trips (id, user_id, name, start_date, end_date, destination, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-  ).run(id, userId, name, startDate, endDate, destination ?? null, now, now);
+    'INSERT INTO trips (id, user_id, name, start_date, end_date, destination, created_at, updated_at, tags, budget) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+  ).run(id, userId, name, startDate, endDate, destination ?? null, now, now, tagsStr, budget ?? null);
   res.status(201).json(toTrip(db.prepare('SELECT * FROM trips WHERE id = ?').get(id) as TripRow));
 });
 
@@ -202,16 +207,20 @@ app.put('/api/trips/:id', (req, res) => {
   const userId = getRequestUserId(req);
   const row = db.prepare('SELECT * FROM trips WHERE id = ? AND user_id = ?').get(req.params.id, userId);
   if (!row) return res.status(404).json({ error: 'Not found' });
-  const { name, startDate, endDate, destination } = req.body;
+  const r = row as TripRow;
+  const { name, startDate, endDate, destination, tags, budget } = req.body;
   const now = new Date().toISOString();
+  const tagsStr = tags !== undefined ? (Array.isArray(tags) ? JSON.stringify(tags) : tags) : r.tags;
   db.prepare(
-    'UPDATE trips SET name = ?, start_date = ?, end_date = ?, destination = ?, updated_at = ? WHERE id = ?'
+    'UPDATE trips SET name = ?, start_date = ?, end_date = ?, destination = ?, updated_at = ?, tags = ?, budget = ? WHERE id = ?'
   ).run(
-    name ?? (row as TripRow).name,
-    startDate ?? (row as TripRow).start_date,
-    endDate ?? (row as TripRow).end_date,
-    destination !== undefined ? destination : (row as TripRow).destination,
+    name ?? r.name,
+    startDate ?? r.start_date,
+    endDate ?? r.end_date,
+    destination !== undefined ? destination : r.destination,
     now,
+    tagsStr ?? null,
+    budget !== undefined ? budget : r.budget ?? null,
     req.params.id
   );
   res.json(toTrip(db.prepare('SELECT * FROM trips WHERE id = ?').get(req.params.id) as TripRow));
@@ -223,6 +232,56 @@ app.delete('/api/trips/:id', (req, res) => {
   if (r.changes === 0) return res.status(404).json({ error: 'Not found' });
   res.status(204).send();
 });
+
+// --- Share (read-only link) ---
+function randomToken(): string {
+  return genId() + genId();
+}
+
+app.post('/api/trips/:id/share', (req, res) => {
+  const userId = getRequestUserId(req);
+  const tripId = req.params.id;
+  const trip = db.prepare('SELECT * FROM trips WHERE id = ? AND user_id = ?').get(tripId, userId);
+  if (!trip) return res.status(404).json({ error: 'Not found' });
+  const token = randomToken();
+  const created_at = new Date().toISOString();
+  db.prepare('INSERT INTO share_tokens (token, trip_id, created_at) VALUES (?, ?, ?)').run(token, tripId, created_at);
+  res.status(201).json({ shareToken: token });
+});
+
+app.get('/api/share/:token', (req, res) => {
+  const row = db.prepare('SELECT * FROM share_tokens WHERE token = ?').get(req.params.token) as { token: string; trip_id: string } | undefined;
+  if (!row) return res.status(404).json({ error: 'Link not found or expired' });
+  const tripId = row.trip_id;
+  const tripRow = db.prepare('SELECT * FROM trips WHERE id = ?').get(tripId) as TripRow | undefined;
+  if (!tripRow) return res.status(404).json({ error: 'Trip not found' });
+  const trips = [toTrip(tripRow)];
+  const tripIds = new Set([tripId]);
+  const allActivities = db.prepare('SELECT * FROM activities WHERE trip_id = ?').all(tripId) as ActivityRow[];
+  const allAcc = db.prepare('SELECT * FROM accommodations WHERE trip_id = ?').all(tripId) as AccRow[];
+  const allAttr = db.prepare('SELECT * FROM attractions WHERE trip_id = ?').all(tripId) as AttrRow[];
+  const allShop = db.prepare('SELECT * FROM shopping_items WHERE trip_id = ?').all(tripId) as ShopRow[];
+  res.json({
+    trip: toTrip(tripRow),
+    days: computeDaysFromTrip(tripRow),
+    activities: allActivities.map(toActivity),
+    accommodations: allAcc.map(toAccommodation),
+    attractions: allAttr.map(toAttraction),
+    shoppingItems: allShop.map(toShoppingItem),
+  });
+});
+
+function computeDaysFromTrip(trip: TripRow): { date: string; dayIndex: number }[] {
+  const start = new Date(trip.start_date + 'T12:00:00');
+  const end = new Date(trip.end_date + 'T12:00:00');
+  const days: { date: string; dayIndex: number }[] = [];
+  let dayIndex = 0;
+  const endTime = end.getTime();
+  for (let d = new Date(start); d.getTime() <= endTime; d.setDate(d.getDate() + 1), dayIndex++) {
+    days.push({ date: d.toISOString().slice(0, 10), dayIndex });
+  }
+  return days;
+}
 
 // --- Activities ---
 app.get('/api/trips/:tripId/activities', (req, res) => {
@@ -245,9 +304,10 @@ app.put('/api/activities/:id', (req, res) => {
   if (!row) return res.status(404).json({ error: 'Not found' });
   const r = row as ActivityRow;
   const u = req.body;
+  const order = u.order !== undefined ? Number(u.order) : r.order;
   db.prepare(
-    'UPDATE activities SET title = ?, time = ?, description = ?, address = ? WHERE id = ?'
-  ).run(u.title ?? r.title, u.time ?? r.time, u.description ?? r.description, u.address ?? r.address, req.params.id);
+    'UPDATE activities SET title = ?, time = ?, description = ?, address = ?, "order" = ? WHERE id = ?'
+  ).run(u.title ?? r.title, u.time ?? r.time, u.description ?? r.description, u.address ?? r.address, order, req.params.id);
   res.json(toActivity(db.prepare('SELECT * FROM activities WHERE id = ?').get(req.params.id) as ActivityRow));
 });
 
@@ -390,13 +450,83 @@ app.delete('/api/documents/:id', (req, res) => {
   res.status(204).send();
 });
 
+// --- Expenses (budget tracking) ---
+interface ExpenseRow { id: string; trip_id: string; description: string; amount: number; created_at: string; }
+function toExpense(e: ExpenseRow) {
+  return { id: e.id, tripId: e.trip_id, description: e.description, amount: e.amount, createdAt: e.created_at };
+}
+
+app.get('/api/trips/:tripId/expenses', (req, res) => {
+  const userId = getRequestUserId(req);
+  const trip = db.prepare('SELECT id FROM trips WHERE id = ? AND user_id = ?').get(req.params.tripId, userId);
+  if (!trip) return res.status(404).json({ error: 'Not found' });
+  const rows = db.prepare('SELECT * FROM expenses WHERE trip_id = ? ORDER BY created_at').all(req.params.tripId) as ExpenseRow[];
+  res.json(rows.map(toExpense));
+});
+
+app.post('/api/trips/:tripId/expenses', (req, res) => {
+  const userId = getRequestUserId(req);
+  const trip = db.prepare('SELECT id FROM trips WHERE id = ? AND user_id = ?').get(req.params.tripId, userId);
+  if (!trip) return res.status(404).json({ error: 'Not found' });
+  const { description, amount } = req.body;
+  const id = genId();
+  const created_at = new Date().toISOString();
+  db.prepare('INSERT INTO expenses (id, trip_id, description, amount, created_at) VALUES (?, ?, ?, ?, ?)').run(id, req.params.tripId, description ?? '', Number(amount) ?? 0, created_at);
+  res.status(201).json(toExpense(db.prepare('SELECT * FROM expenses WHERE id = ?').get(id) as ExpenseRow));
+});
+
+app.delete('/api/expenses/:id', (req, res) => {
+  const r = db.prepare('DELETE FROM expenses WHERE id = ?').run(req.params.id);
+  if (r.changes === 0) return res.status(404).json({ error: 'Not found' });
+  res.status(204).send();
+});
+
+// --- Pinned places (save location for later) ---
+interface PinnedPlaceRow { id: string; trip_id: string; name: string; address: string | null; lat: number | null; lng: number | null; created_at: string; }
+function toPinnedPlace(p: PinnedPlaceRow) {
+  return { id: p.id, tripId: p.trip_id, name: p.name, address: p.address ?? undefined, lat: p.lat ?? undefined, lng: p.lng ?? undefined, createdAt: p.created_at };
+}
+
+app.get('/api/trips/:tripId/pinned-places', (req, res) => {
+  const userId = getRequestUserId(req);
+  const trip = db.prepare('SELECT id FROM trips WHERE id = ? AND user_id = ?').get(req.params.tripId, userId);
+  if (!trip) return res.status(404).json({ error: 'Not found' });
+  const rows = db.prepare('SELECT * FROM pinned_places WHERE trip_id = ? ORDER BY created_at').all(req.params.tripId) as PinnedPlaceRow[];
+  res.json(rows.map(toPinnedPlace));
+});
+
+app.post('/api/trips/:tripId/pinned-places', (req, res) => {
+  const userId = getRequestUserId(req);
+  const trip = db.prepare('SELECT id FROM trips WHERE id = ? AND user_id = ?').get(req.params.tripId, userId);
+  if (!trip) return res.status(404).json({ error: 'Not found' });
+  const { name, address, lat, lng } = req.body;
+  const id = genId();
+  const created_at = new Date().toISOString();
+  db.prepare('INSERT INTO pinned_places (id, trip_id, name, address, lat, lng, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)').run(id, req.params.tripId, name ?? '', address ?? null, lat ?? null, lng ?? null, created_at);
+  res.status(201).json(toPinnedPlace(db.prepare('SELECT * FROM pinned_places WHERE id = ?').get(id) as PinnedPlaceRow));
+});
+
+app.delete('/api/pinned-places/:id', (req, res) => {
+  const r = db.prepare('DELETE FROM pinned_places WHERE id = ?').run(req.params.id);
+  if (r.changes === 0) return res.status(404).json({ error: 'Not found' });
+  res.status(204).send();
+});
+
 // Health
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
 
 // --- Helpers ---
-interface TripRow { id: string; user_id: string; name: string; start_date: string; end_date: string; destination: string | null; created_at: string; updated_at: string; }
+interface TripRow { id: string; user_id: string; name: string; start_date: string; end_date: string; destination: string | null; created_at: string; updated_at: string; tags?: string; budget?: number; }
 function toTrip(r: TripRow) {
-  return { id: r.id, userId: r.user_id, name: r.name, startDate: r.start_date, endDate: r.end_date, destination: r.destination ?? undefined, createdAt: r.created_at, updatedAt: r.updated_at };
+  let tags: string[] | undefined;
+  if (r.tags != null && r.tags !== '') {
+    try { tags = JSON.parse(r.tags); } catch { tags = []; }
+  }
+  return {
+    id: r.id, userId: r.user_id, name: r.name, startDate: r.start_date, endDate: r.end_date,
+    destination: r.destination ?? undefined, createdAt: r.created_at, updatedAt: r.updated_at,
+    tags: tags ?? undefined, budget: r.budget ?? undefined,
+  };
 }
 
 interface ActivityRow { id: string; trip_id: string; day_index: number; title: string; time: string | null; description: string | null; address: string | null; lat: number | null; lng: number | null; order: number; }

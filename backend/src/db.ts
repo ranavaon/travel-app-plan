@@ -96,7 +96,46 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_attractions_trip ON attractions(trip_id);
   CREATE INDEX IF NOT EXISTS idx_shopping_trip ON shopping_items(trip_id);
   CREATE INDEX IF NOT EXISTS idx_documents_trip ON documents(trip_id);
+
+  CREATE TABLE IF NOT EXISTS share_tokens (
+    token TEXT PRIMARY KEY,
+    trip_id TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (trip_id) REFERENCES trips(id) ON DELETE CASCADE
+  );
+  CREATE INDEX IF NOT EXISTS idx_share_tokens_trip ON share_tokens(trip_id);
+
+  CREATE TABLE IF NOT EXISTS expenses (
+    id TEXT PRIMARY KEY,
+    trip_id TEXT NOT NULL,
+    description TEXT NOT NULL,
+    amount REAL NOT NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (trip_id) REFERENCES trips(id) ON DELETE CASCADE
+  );
+  CREATE INDEX IF NOT EXISTS idx_expenses_trip ON expenses(trip_id);
+
+  CREATE TABLE IF NOT EXISTS pinned_places (
+    id TEXT PRIMARY KEY,
+    trip_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    address TEXT,
+    lat REAL,
+    lng REAL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (trip_id) REFERENCES trips(id) ON DELETE CASCADE
+  );
+  CREATE INDEX IF NOT EXISTS idx_pinned_places_trip ON pinned_places(trip_id);
 `);
+
+// Migrations: add new columns to trips if missing
+const tripCols = db.prepare('PRAGMA table_info(trips)').all() as { name: string }[];
+if (!tripCols.some((c) => c.name === 'tags')) {
+  db.exec('ALTER TABLE trips ADD COLUMN tags TEXT');
+}
+if (!tripCols.some((c) => c.name === 'budget')) {
+  db.exec('ALTER TABLE trips ADD COLUMN budget REAL');
+}
 
 // Default user for MVP (no auth flow yet)
 const defaultUserId = 'u1';
