@@ -89,6 +89,8 @@ export type ApiState = {
 
 export type AuthUser = { id: string; email: string; name?: string };
 
+export type TripMember = { userId: string; email: string; name?: string; role: 'owner' | 'participant' | 'viewer' };
+
 export const api = {
   auth: {
     login: (email: string, password: string) =>
@@ -121,6 +123,15 @@ export const api = {
     fetchJson<{ shareToken: string }>(`/api/trips/${tripId}/share`, { method: 'POST' }),
   getSharedTrip: (token: string) =>
     fetchJsonPublic<SharedTripData>(`/api/share/${token}`),
+
+  getTripMembers: (tripId: string) =>
+    fetchJson<{ members: TripMember[] }>(`/api/trips/${tripId}/members`),
+  inviteTripMember: (tripId: string, body: { email: string; role: 'participant' | 'viewer' }) =>
+    fetchJson<{ member: TripMember }>(`/api/trips/${tripId}/members`, { method: 'POST', body: JSON.stringify(body) }),
+  updateTripMemberRole: (tripId: string, memberId: string, role: 'participant' | 'viewer') =>
+    fetchJson<{ member: TripMember }>(`/api/trips/${tripId}/members/${memberId}`, { method: 'PATCH', body: JSON.stringify({ role }) }),
+  removeTripMember: (tripId: string, memberId: string) =>
+    fetchJson<void>(`/api/trips/${tripId}/members/${memberId}`, { method: 'DELETE' }),
 
   getActivities: (tripId: string) => fetchJson<ApiState['activities']>(`/api/trips/${tripId}/activities`),
   createActivity: (tripId: string, body: Omit<import('../types').Activity, 'id'>) =>
