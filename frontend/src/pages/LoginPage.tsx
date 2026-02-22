@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { isApiEnabled, getAppleClientId } from '../api/client';
+import { loginSchema, getFirstZodError } from '../schemas';
 import AppleSignInButton from '../components/AppleSignInButton';
 import GoogleSignInButton from '../components/GoogleSignInButton';
 
@@ -27,9 +28,14 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    const parsed = loginSchema.safeParse({ email, password });
+    if (!parsed.success) {
+      setError(getFirstZodError(parsed.error));
+      return;
+    }
     setLoading(true);
     try {
-      await login(email, password);
+      await login(parsed.data.email, parsed.data.password);
       navigate(from, { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'התחברות נכשלה');

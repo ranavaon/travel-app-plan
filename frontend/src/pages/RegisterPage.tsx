@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { isApiEnabled, getAppleClientId, api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { registerSchema, getFirstZodError } from '../schemas';
 import AppleSignInButton from '../components/AppleSignInButton';
 import GoogleSignInButton from '../components/GoogleSignInButton';
 
@@ -26,9 +27,18 @@ export default function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    const parsed = registerSchema.safeParse({ email, password, name: name || undefined });
+    if (!parsed.success) {
+      setError(getFirstZodError(parsed.error));
+      return;
+    }
     setLoading(true);
     try {
-      const { user, token } = await api.auth.register(email, password, name || undefined);
+      const { user, token } = await api.auth.register(
+        parsed.data.email,
+        parsed.data.password,
+        parsed.data.name
+      );
       setUserAndToken(user, token);
       navigate('/', { replace: true });
     } catch (err) {
