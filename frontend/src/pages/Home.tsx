@@ -29,24 +29,12 @@ export default function Home() {
 
   if (loadingState === 'loading') {
     return (
-      <div dir="rtl" style={{ textAlign: 'right', maxWidth: 720, margin: '0 auto', padding: 16 }}>
+      <div dir="rtl" className="page-wrap">
         <h1>הטיולים שלי</h1>
-        <p style={{ color: '#666', marginTop: 8 }}>טוען...</p>
-        <ul style={{ listStyle: 'none', paddingRight: 0, marginTop: 16 }}>
+        <p style={{ color: 'var(--color-text-muted)', marginTop: 'var(--space-sm)' }}>טוען...</p>
+        <ul className="list-bare" style={{ marginTop: 'var(--space-md)' }}>
           {[1, 2, 3].map((i) => (
-            <li
-              key={i}
-              style={{
-                marginBottom: 12,
-                padding: 12,
-                border: '1px solid #eee',
-                borderRadius: 8,
-                background: 'linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%)',
-                backgroundSize: '200% 100%',
-                animation: 'shimmer 1.2s ease-in-out infinite',
-                height: 56,
-              }}
-            />
+            <li key={i} className="skeleton" style={{ height: 56, marginBottom: 12 }} />
           ))}
         </ul>
       </div>
@@ -54,64 +42,38 @@ export default function Home() {
   }
 
   return (
-    <div dir="rtl" style={{ textAlign: 'right', maxWidth: 720, margin: '0 auto', padding: 16 }}>
+    <div dir="rtl" className="page-wrap">
       <h1>הטיולים שלי</h1>
       <p>
-        <Link to="/trip/new">טיול חדש</Link>
+        <Link to="/trip/new" className="btn btn-primary" style={{ display: 'inline-flex', textDecoration: 'none' }}>טיול חדש</Link>
       </p>
       {allTrips.length > 0 && (
         <>
-          <p style={{ marginTop: 8, marginBottom: 4 }}>
-            <span style={{ marginLeft: 8 }}>סינון תאריכים:</span>
-            <button type="button" onClick={() => setFilter('all')} style={{ marginLeft: 8, fontWeight: filter === 'all' ? 'bold' : 'normal' }}>הכל</button>
-            <button type="button" onClick={() => setFilter('future')} style={{ marginLeft: 4, fontWeight: filter === 'future' ? 'bold' : 'normal' }}>עתיד</button>
-            <button type="button" onClick={() => setFilter('past')} style={{ marginLeft: 4, fontWeight: filter === 'past' ? 'bold' : 'normal' }}>עבר</button>
+          <p style={{ marginTop: 'var(--space-sm)', marginBottom: 'var(--space-xs)' }}>
+            <span style={{ marginLeft: 'var(--space-sm)' }}>סינון תאריכים:</span>
+            <button type="button" onClick={() => setFilter('all')} className={`btn btn-secondary ${filter === 'all' ? 'active' : ''}`} style={{ marginRight: 'var(--space-xs)', fontWeight: filter === 'all' ? 'bold' : 'normal' }}>הכל</button>
+            <button type="button" onClick={() => setFilter('future')} className={`btn btn-secondary ${filter === 'future' ? 'active' : ''}`} style={{ marginRight: 'var(--space-xs)', fontWeight: filter === 'future' ? 'bold' : 'normal' }}>עתיד</button>
+            <button type="button" onClick={() => setFilter('past')} className={`btn btn-secondary ${filter === 'past' ? 'active' : ''}`} style={{ marginRight: 'var(--space-xs)', fontWeight: filter === 'past' ? 'bold' : 'normal' }}>עבר</button>
           </p>
           {allTags.length > 0 && (
-            <p style={{ marginTop: 4, marginBottom: 8 }}>
-              <span style={{ marginLeft: 8 }}>תגית:</span>
-              <button type="button" onClick={() => setTagFilter(null)} style={{ marginLeft: 8, fontWeight: tagFilter === null ? 'bold' : 'normal' }}>הכל</button>
+            <p style={{ marginTop: 'var(--space-xs)', marginBottom: 'var(--space-sm)' }}>
+              <span style={{ marginLeft: 'var(--space-sm)' }}>תגית:</span>
+              <button type="button" onClick={() => setTagFilter(null)} className={`btn btn-secondary ${tagFilter === null ? 'active' : ''}`} style={{ marginRight: 'var(--space-xs)', fontWeight: tagFilter === null ? 'bold' : 'normal' }}>הכל</button>
               {allTags.map((tag) => (
-                <button key={tag} type="button" onClick={() => setTagFilter(tag)} style={{ marginLeft: 4, fontWeight: tagFilter === tag ? 'bold' : 'normal' }}>{tag}</button>
+                <button key={tag} type="button" onClick={() => setTagFilter(tag)} className={`btn btn-secondary ${tagFilter === tag ? 'active' : ''}`} style={{ marginRight: 'var(--space-xs)', fontWeight: tagFilter === tag ? 'bold' : 'normal' }}>{tag}</button>
               ))}
             </p>
           )}
         </>
       )}
-      <ul style={{ listStyle: 'none', paddingRight: 0 }}>
+      <ul className="list-bare">
         {trips.length === 0 ? (
-          <li
-            key="empty"
-            style={{
-              padding: 28,
-              textAlign: 'center',
-              border: '1px dashed rgba(128,128,128,0.4)',
-              borderRadius: 12,
-              marginTop: 16,
-              color: 'inherit',
-              backgroundColor: 'rgba(248,248,248,0.8)',
-            }}
-          >
+          <li key="empty" className="empty-state">
             {allTrips.length === 0 ? (
               <>
-                <p style={{ margin: '0 0 8px', fontSize: '1.15em', fontWeight: 500 }}>
-                  אין עדיין טיולים. צור טיול ראשון
-                </p>
-                <p style={{ margin: '0 0 20px', opacity: 0.85, fontSize: '0.95em' }}>
-                  תתחיל לתכנן את הטיול שלך
-                </p>
-                <Link
-                  to="/trip/new"
-                  style={{
-                    display: 'inline-block',
-                    padding: '12px 24px',
-                    backgroundColor: 'var(--accent, #646cff)',
-                    color: '#fff',
-                    borderRadius: 8,
-                    textDecoration: 'none',
-                    fontWeight: 500,
-                  }}
-                >
+                <p className="empty-title">אין עדיין טיולים. צור טיול ראשון</p>
+                <p className="empty-desc">תתחיל לתכנן את הטיול שלך</p>
+                <Link to="/trip/new" className="btn btn-primary" style={{ textDecoration: 'none' }}>
                   צור טיול ראשון
                 </Link>
               </>
@@ -123,13 +85,13 @@ export default function Home() {
           </li>
         ) : (
           trips.map((trip) => (
-            <li key={trip.id} style={{ marginBottom: 12, padding: 12, border: '1px solid #eee', borderRadius: 8 }}>
+            <li key={trip.id} className="card">
               <Link to={`/trip/${trip.id}`} style={{ fontWeight: 'bold' }}>
                 {trip.name}
               </Link>
               {trip.destination && <><br /><small>יעד: {trip.destination}</small></>}
               {(trip.tags ?? []).length > 0 && (
-                <><br /><small style={{ color: '#666' }}>תגיות: {(trip.tags ?? []).join(', ')}</small></>
+                <><br /><small>תגיות: {(trip.tags ?? []).join(', ')}</small></>
               )}
               <br />
               <small>{trip.startDate} – {trip.endDate}</small>

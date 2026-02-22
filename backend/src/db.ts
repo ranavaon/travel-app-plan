@@ -146,6 +146,17 @@ db.exec(`
     FOREIGN KEY (trip_id) REFERENCES trips(id) ON DELETE CASCADE
   );
   CREATE INDEX IF NOT EXISTS idx_flights_trip ON flights(trip_id);
+
+  CREATE TABLE IF NOT EXISTS trip_members (
+    trip_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    role TEXT NOT NULL CHECK (role IN ('participant', 'viewer')),
+    created_at TEXT NOT NULL,
+    PRIMARY KEY (trip_id, user_id),
+    FOREIGN KEY (trip_id) REFERENCES trips(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  );
+  CREATE INDEX IF NOT EXISTS idx_trip_members_user ON trip_members(user_id);
 `);
 
 // Migrations: add new columns to trips if missing

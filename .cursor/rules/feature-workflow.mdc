@@ -1,0 +1,61 @@
+---
+description: When user asks for a new feature, require GitHub Issue and work on a separate branch
+alwaysApply: true
+---
+
+# Feature Workflow
+
+## When the user asks for a new feature
+
+If the user's message is a **feature request** (e.g. "הוסף פיצ'ר", "רוצה ש...", "Feature:", "Add ...", or clearly describes new functionality to implement):
+
+### 1. Issue ב-GitHub (חובה לפני פיתוח)
+
+- **תגיד למשתמש:** לכל פיצ'ר חייבים לפתוח קודם Issue ב-GitHub. בלי Issue לא ממשיכים לפיתוח.
+- **קישור:** [פתיחת Issue חדש](https://github.com/ranavon/travel-app-plan/issues/new/choose) → לבחור "בקשת פיצ'ר / Feature request".
+- **אופציונלי:** אם המשתמש נתן תיאור מלא, הצג טקסט מוכן להדבקה ב-Issue (תיאור, מטרה, קבלת משתמש) כדי שיוכל להדביק ב-GitHub.
+
+### 2. רק אחרי שיש Issue (או שהמשתמש ביקש "פתח בלי Issue" במפורש)
+
+- **צור ענף נפרד מ-`development`:**  
+  `git fetch origin && git checkout development && git pull origin development && git checkout -b feature/שם-קצר`  
+  (שם הענף: למשל `feature/export-pdf` או `feature/issue-8` אם ציין מספר Issue.)
+- **ממש את הפיצ'ר רק בענף הזה** (אל תעשה שינויים על main או development).
+- **אחרי הפיתוח:** תגיד למשתמש לדחוף את הענף ולפתוח PR ל-`development` (בתיאור: קישור ל-Issue).
+
+### 3. ביצוע הפיצ'ר
+
+- אם הפיצ'ר מורכב: אפשר להפעיל subagent (`mcp_task`, `generalPurpose`) עם: "Implement this feature on the current branch. Return a short summary: what was added and which files changed."
+- אם הפיצ'ר צר: ממש ישירות בענף שיצרת. הוסף/עדכן טסטים רלוונטיים.
+
+### 4. סיכום למשתמש
+
+- מה נוסף ובאילו קבצים.
+- להזכיר: לדחוף את הענף, לפתוח PR ל-`development`.
+
+## Recommended format for feature requests (for the user)
+
+**Short:**
+```
+פיצ'ר: [תיאור קצר – מה להוסיף ואיפה]
+```
+
+**With details:**
+```
+פיצ'ר: [כותרת]
+
+מטרה: ...
+איפה: (דף, תפריט)
+קבלת משתמש: ...
+```
+
+**English:**
+```
+Feature: [short description]
+
+Goal: ...
+Where: (page, menu)
+Acceptance: ...
+```
+
+**זכור:** גם כשאתה מבקש פיצ'ר כאן – קודם פתח Issue ב-GitHub, ואז כל פיצ'ר ייפתח בענף `feature/...` משלו שייפתח אליו PR ל-`development`. ראה [docs/WORKFLOW.md](docs/WORKFLOW.md).

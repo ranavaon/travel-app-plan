@@ -1,0 +1,65 @@
+---
+description: When user opens a bug, require GitHub Issue and fix on a separate branch
+alwaysApply: true
+---
+
+# Bug Fix Workflow
+
+## When the user opens a bug
+
+If the user's message is a **bug report** (e.g. starts with `באג:`, `Bug:`, `תיקון באג:`, or clearly describes a bug with reproduction steps):
+
+### 1. Issue ב-GitHub (חובה לפני תיקון)
+
+- **תגיד למשתמש:** לכל באג שתדווח עליו חייבים לפתוח קודם Issue ב-GitHub. בלי Issue לא ממשיכים לתיקון.
+- **קישור:** [פתיחת Issue חדש](https://github.com/ranavon/travel-app-plan/issues/new/choose) → לבחור "דיווח באג / Bug report".
+- **אופציונלי:** אם המשתמש נתן תיאור מלא, הצג טקסט מוכן להדבקה ב-Issue (תיאור, איך לשחזר, מצופה, בפועל) כדי שיוכל להדביק ב-GitHub.
+
+### 2. רק אחרי שיש Issue (או שהמשתמש ביקש "תקן בלי Issue" במפורש)
+
+- **צור ענף נפרד מ-`development`:**  
+  `git fetch origin && git checkout development && git pull origin development && git checkout -b fix/שם-קצר`  
+  (שם הענף: למשל `fix/expense-response` או `fix/issue-7` אם ציין מספר Issue.)
+- **בצע את התיקון רק בענף הזה** (אל תעשה את התיקון על main או development).
+- **אחרי התיקון:** תגיד למשתמש לדחוף את הענף ולפתוח PR ל-`development`, ולעדכן את [docs/BUGS_AND_FIXES.md](docs/BUGS_AND_FIXES.md) עם הרשומה (כולל קישור ל-Issue ולענף/PR).
+
+### 3. ביצוע התיקון
+
+- אם התיקון מורכב: הפעל subagent (`mcp_task`, `generalPurpose`) עם: "Verify the bug exists, then fix it on the current branch. Return a short summary: what was wrong and what you changed."
+- אם התיקון צר (קובץ אחד/שורות בודדות): תקן ישירות בענף שיצרת.
+
+### 4. סיכום למשתמש
+
+- מה תוקן ובאילו קבצים.
+- להזכיר: לדחוף את הענף, לפתוח PR ל-`development`, לעדכן את BUGS_AND_FIXES.
+
+## Recommended format for opening bugs (for the user)
+
+**Short:**
+```
+באג: [תיאור קצר – איפה ומה לא עובד]
+```
+
+**With reproduction (better):**
+```
+באג: [כותרת]
+
+איך לשחזר:
+1. ...
+2. ...
+
+מצופה: ...
+בפועל: ...
+```
+
+**English:**
+```
+Bug: [short description]
+
+Steps to reproduce:
+1. ...
+Expected: ...
+Actual: ...
+```
+
+**זכור:** גם כשאתה מדווח כאן – קודם פתח Issue ב-GitHub, ואז כל תיקון ייעשה בענף משלו שייפתח אליו PR ל-`development`.
