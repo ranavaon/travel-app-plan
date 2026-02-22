@@ -9,6 +9,8 @@ export default defineConfig({
     environment: 'jsdom',
     globals: false,
     setupFiles: ['src/test/setup.ts'],
+    include: ['src/**/*.test.{ts,tsx}', 'src/**/*.spec.{ts,tsx}'],
+    exclude: ['**/node_modules/**', '**/e2e/**'],
   },
   plugins: [
     react(),

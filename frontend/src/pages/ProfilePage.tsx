@@ -13,7 +13,7 @@ export default function ProfilePage() {
 
   if (!isApiEnabled()) {
     return (
-      <div dir="rtl" style={{ maxWidth: 400, margin: '0 auto', padding: 24, textAlign: 'right' }}>
+      <div dir="rtl" className="page-wrap" style={{ maxWidth: 400 }}>
         <p>פרופיל זמין עם חיבור ל-API</p>
         <Link to="/">חזרה לדף הבית</Link>
       </div>
@@ -22,7 +22,7 @@ export default function ProfilePage() {
 
   if (!currentUser) {
     return (
-      <div dir="rtl" style={{ maxWidth: 400, margin: '0 auto', padding: 24, textAlign: 'right' }}>
+      <div dir="rtl" className="page-wrap" style={{ maxWidth: 400 }}>
         <p>יש להתחבר כדי לראות את הפרופיל.</p>
         <Link to="/login">התחבר</Link>
       </div>
@@ -46,31 +46,30 @@ export default function ProfilePage() {
   };
 
   return (
-    <div dir="rtl" style={{ maxWidth: 400, margin: '0 auto', padding: 24, textAlign: 'right' }}>
+    <div dir="rtl" className="page-wrap" style={{ maxWidth: 400 }}>
       <h1>פרופיל</h1>
       <p><strong>אימייל:</strong> {currentUser.email}</p>
       <p><strong>שם:</strong> {currentUser.name ?? '—'}</p>
 
-      <form onSubmit={handleSubmit} style={{ marginTop: 16 }}>
-        <div style={{ marginBottom: 12 }}>
-          <label htmlFor="profile-name" style={{ display: 'block', marginBottom: 4 }}>עריכת שם</label>
+      <form onSubmit={handleSubmit} style={{ marginTop: 'var(--space-md)' }}>
+        <div className="form-group">
+          <label htmlFor="profile-name">עריכת שם</label>
           <input
             id="profile-name"
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            style={{ width: '100%', padding: 8 }}
             placeholder="השם שלך"
           />
         </div>
-        {error && <p style={{ color: 'red', marginBottom: 8 }}>{error}</p>}
-        {success && <p style={{ color: 'green', marginBottom: 8 }}>השם נשמר בהצלחה</p>}
-        <button type="submit" disabled={saving} style={{ padding: '8px 16px', cursor: saving ? 'not-allowed' : 'pointer' }}>
+        {error && <p style={{ color: 'var(--color-error)', marginBottom: 'var(--space-sm)' }}>{error}</p>}
+        {success && <p style={{ color: 'var(--color-primary)', marginBottom: 'var(--space-sm)' }}>השם נשמר בהצלחה</p>}
+        <button type="submit" disabled={saving} className="btn btn-primary">
           {saving ? 'שומר...' : 'שמור שם'}
         </button>
       </form>
 
-      <p style={{ marginTop: 24 }}>
+      <p style={{ marginTop: 'var(--space-lg)' }}>
         <Link to="/">חזרה לדף הבית</Link>
       </p>
     </div>

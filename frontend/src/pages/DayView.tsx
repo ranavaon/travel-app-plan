@@ -21,10 +21,7 @@ import { useTripData } from '../context/TripContext';
 import type { Activity } from '../types';
 import { activityFieldsSchema, getFirstZodError } from '../schemas';
 import DayMap, { type MapPoint } from '../components/DayMap';
-
-function mapsUrl(address: string): string {
-  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
-}
+import { mapsSearchUrl, mapsNavigationUrl } from '../utils/maps';
 
 export default function DayView() {
   const { id, dayIndex: dayIndexParam } = useParams<{ id: string; dayIndex: string }>();
@@ -73,7 +70,7 @@ export default function DayView() {
 
   if (!id || isNaN(dayIndex)) {
     return (
-      <div dir="rtl">
+      <div dir="rtl" className="page-wrap">
         <p>נתיב לא תקין</p>
         <Link to="/">דף בית</Link>
       </div>
@@ -82,7 +79,7 @@ export default function DayView() {
 
   if (!trip) {
     return (
-      <div dir="rtl">
+      <div dir="rtl" className="page-wrap">
         <p>הטיול לא נמצא</p>
         <Link to="/">דף בית</Link>
       </div>
@@ -150,7 +147,7 @@ export default function DayView() {
   const activityIds = useMemo(() => activities.map((a) => a.id), [activities]);
 
   return (
-    <div dir="rtl" style={{ textAlign: 'right', maxWidth: 600, margin: '0 auto', padding: 16 }}>
+    <div dir="rtl" className="page-wrap">
       <p>
         <Link to="/">דף בית</Link> | <Link to={`/trip/${id}`}>חזרה לטיול</Link>
       </p>
@@ -165,26 +162,36 @@ export default function DayView() {
       )}
 
       {accommodation && (
-        <section style={{ marginBlock: 24, padding: 16, border: '1px solid #ccc', borderRadius: 8 }}>
+        <section className="card section-block">
           <h2>לינה</h2>
           <p><strong>{accommodation.name}</strong></p>
           <p>{accommodation.address}</p>
-          <a href={mapsUrl(accommodation.address)} target="_blank" rel="noopener noreferrer">נווט</a>
+          <div style={{ display: 'flex', gap: 'var(--space-sm)', flexWrap: 'wrap', marginTop: 'var(--space-xs)' }}>
+            {accommodation.address && (
+              <>
+                <a href="#day-map" className="btn btn-ghost" style={{ fontSize: '0.9em' }}>ראה על המפה</a>
+                <a href={mapsNavigationUrl({ address: accommodation.address, lat: accommodation.lat, lng: accommodation.lng })} target="_blank" rel="noopener noreferrer" className="btn btn-ghost" style={{ fontSize: '0.9em' }}>פתח ניווט</a>
+                <a href={mapsSearchUrl(accommodation.address)} target="_blank" rel="noopener noreferrer" className="btn btn-ghost" style={{ fontSize: '0.9em' }}>חיפוש במפות</a>
+              </>
+            )}
+          </div>
         </section>
       )}
 
       {dayAttractions.length > 0 && (
-        <section style={{ marginBlock: 24, padding: 16, border: '1px solid #ddd', borderRadius: 8 }}>
+        <section className="card section-block">
           <h2>אטרקציות היום</h2>
-          <ul style={{ listStyle: 'none', padding: 0 }}>
+          <ul className="list-bare">
             {dayAttractions.map((a) => (
-              <li key={a.id} style={{ marginBottom: 8 }}>
+              <li key={a.id} style={{ marginBottom: 'var(--space-sm)' }}>
                 <strong>{a.name}</strong>
                 {a.address && (
                   <>
                     <br /><small>{a.address}</small>
                     {' '}
-                    <a href={mapsUrl(a.address)} target="_blank" rel="noopener noreferrer">נווט</a>
+                    <a href={mapsNavigationUrl({ address: a.address, lat: a.lat, lng: a.lng })} target="_blank" rel="noopener noreferrer">פתח ניווט</a>
+                    {' '}
+                    <a href={mapsSearchUrl(a.address)} target="_blank" rel="noopener noreferrer">חיפוש במפות</a>
                   </>
                 )}
               </li>
@@ -193,20 +200,12 @@ export default function DayView() {
         </section>
       )}
 
-      <DayMap points={mapPoints} />
+      <div id="day-map"><DayMap points={mapPoints} /></div>
 
-      <section style={{ marginBlock: 24 }}>
+      <section className="section-block">
         <h2>פעילויות</h2>
         {activities.length === 0 ? (
-          <p
-            style={{
-              padding: 16,
-              margin: 0,
-              border: '1px dashed rgba(128,128,128,0.35)',
-              borderRadius: 8,
-              opacity: 0.9,
-            }}
-          >
+          <p className="empty-state" style={{ marginTop: 0 }}>
             אין עדיין פעילויות ליום זה. הוסף פעילות למעלה.
           </p>
         ) : (
@@ -230,45 +229,41 @@ export default function DayView() {
         )}
       </section>
 
-      <section style={{ marginBlock: 24, padding: 16, border: '1px solid #ccc', borderRadius: 8 }}>
+      <section className="card section-block">
         <h2>הוסף פעילות</h2>
-        <form onSubmit={handleAddSubmit}>
-          {addFormError && <p style={{ color: 'crimson', margin: '0 0 8px 0' }}>{addFormError}</p>}
-          <div style={{ marginBottom: 8 }}>
+        <form onSubmit={handleAddSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+          {addFormError && <p style={{ color: 'var(--color-error)', margin: '0 0 var(--space-sm) 0' }}>{addFormError}</p>}
+          <div className="form-group">
             <label>כותרת *</label>
             <input
               value={addForm.title}
               onChange={(e) => setAddForm((f) => ({ ...f, title: e.target.value }))}
               required
-              style={{ display: 'block', width: '100%', marginTop: 4 }}
             />
           </div>
-          <div style={{ marginBottom: 8 }}>
+          <div className="form-group">
             <label>שעה</label>
             <input
               value={addForm.time}
               onChange={(e) => setAddForm((f) => ({ ...f, time: e.target.value }))}
               placeholder="למשל 10:00"
-              style={{ display: 'block', width: '100%', marginTop: 4 }}
             />
           </div>
-          <div style={{ marginBottom: 8 }}>
+          <div className="form-group">
             <label>תיאור</label>
             <input
               value={addForm.description}
               onChange={(e) => setAddForm((f) => ({ ...f, description: e.target.value }))}
-              style={{ display: 'block', width: '100%', marginTop: 4 }}
             />
           </div>
-          <div style={{ marginBottom: 8 }}>
+          <div className="form-group">
             <label>כתובת</label>
             <input
               value={addForm.address}
               onChange={(e) => setAddForm((f) => ({ ...f, address: e.target.value }))}
-              style={{ display: 'block', width: '100%', marginTop: 4 }}
             />
           </div>
-          <button type="submit">הוסף פעילות</button>
+          <button type="submit" className="btn btn-primary">הוסף פעילות</button>
         </form>
       </section>
     </div>
@@ -300,17 +295,13 @@ function SortableActivityCard({
   } = useSortable({ id: activity.id });
 
   const style: React.CSSProperties = {
-    marginBottom: 16,
-    padding: 12,
-    border: '1px solid #eee',
-    borderRadius: 8,
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
   };
 
   return (
-    <li ref={setNodeRef} style={style} {...attributes} {...listeners}>
+    <li ref={setNodeRef} className="card" style={{ ...style, marginBottom: 'var(--space-md)' }} {...attributes} {...listeners}>
       {isEditing ? (
         <ActivityEditForm
           activity={activity}
@@ -322,12 +313,14 @@ function SortableActivityCard({
           <p><strong>{activity.title}</strong>{activity.time ? ` – ${activity.time}` : ''}</p>
           {(activity.description || activity.address) && <p>{activity.description || activity.address}</p>}
           {activity.address && (
-            <a href={mapsUrl(activity.address)} target="_blank" rel="noopener noreferrer" style={{ marginLeft: 8 }}>נווט</a>
+            <>
+              <a href={mapsNavigationUrl({ address: activity.address, lat: activity.lat, lng: activity.lng })} target="_blank" rel="noopener noreferrer" style={{ marginRight: 'var(--space-sm)' }}>פתח ניווט</a>
+              <a href={mapsSearchUrl(activity.address)} target="_blank" rel="noopener noreferrer" style={{ marginRight: 'var(--space-sm)' }}>חיפוש במפות</a>
+            </>
           )}
-          <p style={{ marginTop: 8 }}>
-            <button type="button" onClick={(e) => { e.stopPropagation(); onStartEdit(); }}>ערוך</button>
-            {' '}
-            <button type="button" onClick={(e) => { e.stopPropagation(); onDelete(); }}>מחק</button>
+          <p className="form-actions" style={{ marginTop: 'var(--space-sm)', marginBottom: 0 }}>
+            <button type="button" onClick={(e) => { e.stopPropagation(); onStartEdit(); }} className="btn btn-secondary">ערוך</button>
+            <button type="button" onClick={(e) => { e.stopPropagation(); onDelete(); }} className="btn btn-ghost">מחק</button>
           </p>
         </>
       )}
@@ -355,21 +348,23 @@ function ActivityEditForm({
   };
 
   return (
-    <form onSubmit={handleSubmit}>
-      <div style={{ marginBottom: 8 }}>
-        <input value={title} onChange={(e) => setTitle(e.target.value)} required style={{ width: '100%' }} />
+    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+      <div className="form-group">
+        <input value={title} onChange={(e) => setTitle(e.target.value)} required placeholder="כותרת" />
       </div>
-      <div style={{ marginBottom: 8 }}>
-        <input value={time} onChange={(e) => setTime(e.target.value)} placeholder="שעה" style={{ width: '100%' }} />
+      <div className="form-group">
+        <input value={time} onChange={(e) => setTime(e.target.value)} placeholder="שעה" />
       </div>
-      <div style={{ marginBottom: 8 }}>
-        <input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="תיאור" style={{ width: '100%' }} />
+      <div className="form-group">
+        <input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="תיאור" />
       </div>
-      <div style={{ marginBottom: 8 }}>
-        <input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="כתובת" style={{ width: '100%' }} />
+      <div className="form-group">
+        <input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="כתובת" />
       </div>
-      <button type="submit">שמור</button>
-      <button type="button" onClick={onCancel}>ביטול</button>
+      <div className="form-actions">
+        <button type="submit" className="btn btn-primary">שמור</button>
+        <button type="button" onClick={onCancel} className="btn btn-ghost">ביטול</button>
+      </div>
     </form>
   );
 }
