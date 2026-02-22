@@ -83,7 +83,7 @@ export default function TripDocuments({ tripId }: Props) {
             opacity: 0.9,
           }}
         >
-          אין מסמכים עדיין. הוסף מסמך (דרכון, ויזה, ביטוח) למטה.
+          אין מסמכים. הוסף מסמך (צילום או העלאה).
         </p>
       ) : (
       <ul style={{ listStyle: 'none', padding: 0, display: 'grid', gap: 12 }}>

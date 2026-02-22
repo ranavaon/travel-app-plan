@@ -1,7 +1,25 @@
 import { useParams, Link } from 'react-router-dom';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  useSortable,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { useTripData } from '../context/TripContext';
 import type { Activity } from '../types';
+import { activityFieldsSchema, getFirstZodError } from '../schemas';
 import DayMap, { type MapPoint } from '../components/DayMap';
 
 function mapsUrl(address: string): string {
@@ -22,9 +40,9 @@ export default function DayView() {
     deleteActivity,
   } = useTripData();
 
-  const [refresh, setRefresh] = useState(0);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [addForm, setAddForm] = useState({ title: '', time: '', description: '', address: '' });
+  const [addFormError, setAddFormError] = useState('');
 
   const trip = id ? getTrip(id) : undefined;
   const days = trip ? getDays(trip) : [];
@@ -36,7 +54,7 @@ export default function DayView() {
   );
   const activities = useMemo(
     () => (id && !isNaN(dayIndex) ? getActivitiesForDay(id, dayIndex) : []),
-    [id, dayIndex, refresh]
+    [id, dayIndex, getActivitiesForDay]
   );
 
   const mapPoints = useMemo((): MapPoint[] => {
@@ -73,31 +91,63 @@ export default function DayView() {
 
   const handleDelete = (activityId: string) => {
     deleteActivity(activityId);
-    setRefresh((r) => r + 1);
     if (editingId === activityId) setEditingId(null);
   };
 
   const handleEditSubmit = (activityId: string, partial: Partial<Pick<Activity, 'title' | 'time' | 'description' | 'address'>>) => {
     updateActivity(activityId, partial);
     setEditingId(null);
-    setRefresh((r) => r + 1);
   };
 
   const handleAddSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!addForm.title.trim()) return;
-    addActivity({
-      tripId: id,
-      dayIndex,
+    setAddFormError('');
+    const result = activityFieldsSchema.safeParse({
       title: addForm.title.trim(),
       time: addForm.time.trim() || undefined,
       description: addForm.description.trim() || undefined,
       address: addForm.address.trim() || undefined,
+    });
+    if (!result.success) {
+      setAddFormError(getFirstZodError(result.error));
+      return;
+    }
+    addActivity({
+      tripId: id,
+      dayIndex,
+      title: result.data.title,
+      time: result.data.time,
+      description: result.data.description,
+      address: result.data.address,
       order: activities.length,
     });
     setAddForm({ title: '', time: '', description: '', address: '' });
-    setRefresh((r) => r + 1);
   };
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
+      if (!over || active.id === over.id) return;
+      const ids = activities.map((a) => a.id);
+      const oldIndex = ids.indexOf(active.id as string);
+      const newIndex = ids.indexOf(over.id as string);
+      if (oldIndex === -1 || newIndex === -1) return;
+      const reordered = arrayMove(activities, oldIndex, newIndex);
+      reordered.forEach((act, index) => {
+        if (act.order !== index) {
+          updateActivity(act.id, { order: index });
+        }
+      });
+    },
+    [activities, updateActivity]
+  );
+
+  const activityIds = useMemo(() => activities.map((a) => a.id), [activities]);
 
   return (
     <div dir="rtl" style={{ textAlign: 'right', maxWidth: 600, margin: '0 auto', padding: 16 }}>
@@ -157,41 +207,33 @@ export default function DayView() {
               opacity: 0.9,
             }}
           >
-            אין עדיין פעילויות ליום זה. הוסף פעילות למטה.
+            אין עדיין פעילויות ליום זה. הוסף פעילות למעלה.
           </p>
         ) : (
-        <ul style={{ listStyle: 'none', padding: 0 }}>
-          {activities.map((act) => (
-            <li key={act.id} style={{ marginBottom: 16, padding: 12, border: '1px solid #eee', borderRadius: 8 }}>
-              {editingId === act.id ? (
-                <ActivityEditForm
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={activityIds} strategy={verticalListSortingStrategy}>
+            <ul style={{ listStyle: 'none', padding: 0 }}>
+              {activities.map((act) => (
+                <SortableActivityCard
+                  key={act.id}
                   activity={act}
-                  onSave={(partial) => handleEditSubmit(act.id, partial)}
-                  onCancel={() => setEditingId(null)}
+                  isEditing={editingId === act.id}
+                  onEditSubmit={(partial) => handleEditSubmit(act.id, partial)}
+                  onDelete={() => handleDelete(act.id)}
+                  onStartEdit={() => setEditingId(act.id)}
+                  onCancelEdit={() => setEditingId(null)}
                 />
-              ) : (
-                <>
-                  <p><strong>{act.title}</strong>{act.time ? ` – ${act.time}` : ''}</p>
-                  {(act.description || act.address) && <p>{act.description || act.address}</p>}
-                  {act.address && (
-                    <a href={mapsUrl(act.address)} target="_blank" rel="noopener noreferrer" style={{ marginLeft: 8 }}>נווט</a>
-                  )}
-                  <p style={{ marginTop: 8 }}>
-                    <button type="button" onClick={() => setEditingId(act.id)}>ערוך</button>
-                    {' '}
-                    <button type="button" onClick={() => handleDelete(act.id)}>מחק</button>
-                  </p>
-                </>
-              )}
-            </li>
-          ))}
-        </ul>
+              ))}
+            </ul>
+          </SortableContext>
+        </DndContext>
         )}
       </section>
 
       <section style={{ marginBlock: 24, padding: 16, border: '1px solid #ccc', borderRadius: 8 }}>
         <h2>הוסף פעילות</h2>
         <form onSubmit={handleAddSubmit}>
+          {addFormError && <p style={{ color: 'crimson', margin: '0 0 8px 0' }}>{addFormError}</p>}
           <div style={{ marginBottom: 8 }}>
             <label>כותרת *</label>
             <input
@@ -230,6 +272,66 @@ export default function DayView() {
         </form>
       </section>
     </div>
+  );
+}
+
+function SortableActivityCard({
+  activity,
+  isEditing,
+  onEditSubmit,
+  onDelete,
+  onStartEdit,
+  onCancelEdit,
+}: {
+  activity: Activity;
+  isEditing: boolean;
+  onEditSubmit: (partial: Partial<Pick<Activity, 'title' | 'time' | 'description' | 'address'>>) => void;
+  onDelete: () => void;
+  onStartEdit: () => void;
+  onCancelEdit: () => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: activity.id });
+
+  const style: React.CSSProperties = {
+    marginBottom: 16,
+    padding: 12,
+    border: '1px solid #eee',
+    borderRadius: 8,
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <li ref={setNodeRef} style={style} {...attributes} {...listeners}>
+      {isEditing ? (
+        <ActivityEditForm
+          activity={activity}
+          onSave={onEditSubmit}
+          onCancel={onCancelEdit}
+        />
+      ) : (
+        <>
+          <p><strong>{activity.title}</strong>{activity.time ? ` – ${activity.time}` : ''}</p>
+          {(activity.description || activity.address) && <p>{activity.description || activity.address}</p>}
+          {activity.address && (
+            <a href={mapsUrl(activity.address)} target="_blank" rel="noopener noreferrer" style={{ marginLeft: 8 }}>נווט</a>
+          )}
+          <p style={{ marginTop: 8 }}>
+            <button type="button" onClick={(e) => { e.stopPropagation(); onStartEdit(); }}>ערוך</button>
+            {' '}
+            <button type="button" onClick={(e) => { e.stopPropagation(); onDelete(); }}>מחק</button>
+          </p>
+        </>
+      )}
+    </li>
   );
 }
 

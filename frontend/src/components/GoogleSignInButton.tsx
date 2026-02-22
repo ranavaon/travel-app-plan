@@ -12,7 +12,7 @@ type Props = {
 export default function GoogleSignInButton({ onSuccess, disabled }: Props) {
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
   const { setUserAndToken } = useAuth();
-  const [scriptReady, setScriptReady] = useState(false);
+  const buttonContainerRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const callbackRef = useRef<((response: { credential: string }) => void) | null>(null);
@@ -39,16 +39,25 @@ export default function GoogleSignInButton({ onSuccess, disabled }: Props) {
 
   useEffect(() => {
     if (!clientId || typeof clientId !== 'string' || clientId.length === 0) return;
+    if (!buttonContainerRef.current) return;
 
     const run = () => {
-      if (typeof window === 'undefined' || !window.google?.accounts?.id) return;
+      const parent = buttonContainerRef.current;
+      if (!parent || typeof window === 'undefined' || !window.google?.accounts?.id) return;
       window.google.accounts.id.initialize({
         client_id: clientId,
         callback: (response: { credential: string }) => {
           callbackRef.current?.(response);
         },
       });
-      setScriptReady(true);
+      parent.innerHTML = '';
+      window.google.accounts.id.renderButton(parent, {
+        type: 'standard',
+        theme: 'outline',
+        size: 'large',
+        text: 'signin_with',
+        width: parent.offsetWidth || 280,
+      });
     };
 
     if (window.google?.accounts?.id) {
@@ -59,11 +68,8 @@ export default function GoogleSignInButton({ onSuccess, disabled }: Props) {
     const existing = document.querySelector(`script[src="${GSI_SCRIPT_URL}"]`);
     if (existing) {
       const check = () => {
-        if (window.google?.accounts?.id) {
-          run();
-        } else {
-          requestAnimationFrame(check);
-        }
+        if (window.google?.accounts?.id) run();
+        else requestAnimationFrame(check);
       };
       check();
       return;
@@ -91,27 +97,19 @@ export default function GoogleSignInButton({ onSuccess, disabled }: Props) {
     return null;
   }
 
-  const handleClick = () => {
-    if (!scriptReady || loading) return;
-    setError('');
-    window.google?.accounts?.id?.prompt();
-  };
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
-      <button
-        type="button"
-        onClick={handleClick}
-        disabled={!scriptReady || loading || disabled}
+      <div
+        ref={buttonContainerRef}
         style={{
-          padding: 10,
-          cursor: scriptReady && !loading ? 'pointer' : 'default',
-          opacity: scriptReady && !loading ? 1 : 0.7,
+          minHeight: 44,
+          minWidth: 280,
+          opacity: disabled || loading ? 0.6 : 1,
+          pointerEvents: disabled || loading ? 'none' : 'auto',
         }}
-        aria-label="התחבר עם Google"
-      >
-        {loading ? 'מתחבר...' : 'התחבר עם Google'}
-      </button>
+        aria-hidden={disabled || loading}
+      />
+      {loading && <p style={{ margin: 0, fontSize: '0.9em', color: '#666' }}>מתחבר...</p>}
       {error && <p style={{ color: 'crimson', margin: 0, fontSize: '0.9em' }}>{error}</p>}
     </div>
   );
