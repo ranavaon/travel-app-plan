@@ -14,6 +14,22 @@ import { exportFileNameFromTripName, getShareBaseOrigin, buildTripAsText, pinned
 import { reverseGeocode } from '../utils/geocode';
 import type { Flight, PinnedPlace } from '../types';
 
+type SectionId = 'days' | 'map' | 'flights' | 'accommodations' | 'attractions' | 'suggestions' | 'shopping' | 'budget' | 'pinned' | 'reminders' | 'documents';
+
+const SECTIONS: { id: SectionId; icon: string; label: string; ownerOnly?: boolean; needsDestination?: boolean; apiOnly?: boolean }[] = [
+  { id: 'days', icon: '📅', label: 'ימים' },
+  { id: 'map', icon: '🗺️', label: 'מפה' },
+  { id: 'flights', icon: '✈️', label: 'טיסות' },
+  { id: 'accommodations', icon: '🏨', label: 'לינה' },
+  { id: 'attractions', icon: '🎯', label: 'אטרקציות' },
+  { id: 'suggestions', icon: '💡', label: 'הצעות חכמות', needsDestination: true },
+  { id: 'shopping', icon: '🛒', label: 'רשימות' },
+  { id: 'budget', icon: '💰', label: 'תקציב' },
+  { id: 'pinned', icon: '📌', label: 'מיקומים' },
+  { id: 'reminders', icon: '⏰', label: 'תזכורות' },
+  { id: 'documents', icon: '📄', label: 'מסמכים' },
+];
+
 export default function Trip() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -50,6 +66,22 @@ export default function Trip() {
     pinnedPlaces.forEach((p) => { if (p.address || p.lat != null) pts.push({ id: p.id, label: p.name, address: p.address ?? '', lat: p.lat, lng: p.lng }); });
     return pts;
   }, [accommodations, attractions, allActivities, pinnedPlaces]);
+
+  const sectionCounts: Record<SectionId, number> = {
+    days: days.length,
+    map: allMapPoints.length,
+    flights: flights.length,
+    accommodations: accommodations.length,
+    attractions: attractions.length,
+    suggestions: 0,
+    shopping: shoppingItems.length,
+    budget: expenses.length,
+    pinned: pinnedPlaces.length,
+    reminders: 0,
+    documents: 0,
+  };
+
+  const [activeSection, setActiveSection] = useState<SectionId | null>(null);
 
   // --- form states ---
   const [showAccForm, setShowAccForm] = useState(false);
@@ -109,6 +141,8 @@ export default function Trip() {
       </div>
     );
   }
+
+  const toggleSection = (s: SectionId) => setActiveSection((prev) => (prev === s ? null : s));
 
   // --- handlers ---
   const resetAccForm = () => { setAccName(''); setAccAddress(''); setAccCheckIn(''); setAccCheckOut(''); setAccLat(null); setAccLng(null); setAccGpsError(null); setShowAccForm(false); };
@@ -229,14 +263,34 @@ export default function Trip() {
   const mailtoUrl = shareUrl ? `mailto:?subject=${encodeURIComponent(shareSubject)}&body=${encodeURIComponent(shareUrl)}` : '#';
   const whatsappUrl = shareUrl ? `https://wa.me/?text=${encodeURIComponent(shareUrl)}` : '#';
 
+  const visibleSections = SECTIONS.filter((s) => {
+    if (s.needsDestination && !trip.destination) return false;
+    return true;
+  });
+
   return (
     <div dir="rtl" className="page-wrap">
       <p><Link to="/">דף בית</Link></p>
 
-      <h1 style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', flexWrap: 'wrap' }}>
-        {trip.name}
-        {isViewer && <span className="badge">צופה</span>}
-      </h1>
+      {/* Hero header */}
+      <div className="trip-hero">
+        <h1>
+          {trip.name}
+          {isViewer && <span className="badge" style={{ background: 'rgba(255,255,255,0.2)', color: '#fff', border: 'none', marginRight: 'var(--space-sm)', verticalAlign: 'middle' }}>צופה</span>}
+        </h1>
+        <div className="trip-meta">
+          {trip.destination && <span><strong>יעד:</strong> {trip.destination}</span>}
+          <span><strong>תאריכים:</strong> {trip.startDate} – {trip.endDate}</span>
+          {days.length > 0 && <span><strong>{days.length}</strong> ימים</span>}
+        </div>
+        {(trip.tags ?? []).length > 0 && (
+          <div style={{ marginTop: 'var(--space-sm)', display: 'flex', gap: 'var(--space-xs)', flexWrap: 'wrap' }}>
+            {(trip.tags ?? []).map((tag) => (
+              <span key={tag} className="badge" style={{ background: 'rgba(255,255,255,0.2)', color: '#fff', border: 'none' }}>{tag}</span>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Action bar */}
       <div className="btn-group" style={{ flexWrap: 'wrap' }}>
@@ -273,252 +327,332 @@ export default function Trip() {
 
       {showMembersModal && isOwner && <TripMembersModal tripId={id} onClose={() => setShowMembersModal(false)} />}
 
-      {trip.destination && <p style={{ marginTop: 'var(--space-md)' }}><strong>יעד:</strong> {trip.destination}</p>}
-      <p><strong>תאריכים:</strong> {trip.startDate} – {trip.endDate}</p>
-
-      {/* Days */}
-      <h2 className="section-block">ימים</h2>
-      {days.length === 0 ? (
-        <p style={{ color: 'var(--color-text-muted)' }}>אין ימים (בדוק תאריכי התחלה וסיום)</p>
-      ) : (
-        <ul className="list-bare">
-          {days.map((day) => (
-            <li key={day.dayIndex} style={{ marginBottom: 'var(--space-xs)' }}>
-              <Link to={`/trip/${id}/day/${day.dayIndex}`}>יום {day.dayIndex + 1} – {day.date}</Link>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {/* Map */}
-      <div id="trip-map" className="section-block"><DayMap points={allMapPoints} /></div>
-
-      {/* Flights */}
-      <h2 className="section-block">טיסות</h2>
-      {flights.length === 0 ? (
-        <p style={{ color: 'var(--color-text-muted)' }}>אין טיסות</p>
-      ) : (
-        <ul className="list-bare">
-          {flights.map((f: Flight) => (
-            <li key={f.id} className="card">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 'var(--space-sm)' }}>
-                <div>
-                  {(f.airline || f.flightNumber) && <strong>{[f.airline, f.flightNumber].filter(Boolean).join(' ')}</strong>}
-                  {(f.airportDeparture || f.airportArrival) && <><br /><span>{f.airportDeparture} → {f.airportArrival}</span></>}
-                  {f.departureDateTime && <><br /><small>יציאה: {f.departureDateTime}</small></>}
-                  {f.arrivalDateTime && <><br /><small>נחיתה: {f.arrivalDateTime}</small></>}
-                  {f.gate && <><br /><small>גייט: {f.gate}</small></>}
-                  {f.seat && <><br /><small>מושב: {f.seat}</small></>}
-                  {f.cabinClass && <><br /><small>מחלקה: {f.cabinClass}</small></>}
-                  {f.ticketUrl && <><br /><a href={f.ticketUrl} target="_blank" rel="noopener noreferrer">קישור לכרטיס</a></>}
-                  {f.ticketNotes && <><br /><small>{f.ticketNotes}</small></>}
-                  {f.notes && <><br /><small>{f.notes}</small></>}
-                </div>
-                {canEdit && <button type="button" onClick={() => deleteFlight(f.id)} className="btn btn-ghost" aria-label="מחק טיסה">מחק</button>}
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-      {canEdit && !showFlightForm && <button type="button" onClick={() => setShowFlightForm(true)} className="btn btn-primary" style={{ marginTop: 'var(--space-sm)' }}>הוסף טיסה</button>}
-      {canEdit && showFlightForm && (
-        <form onSubmit={handleAddFlight} className="card" style={{ marginTop: 'var(--space-sm)', display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)', maxWidth: 420 }}>
-          <div className="form-group"><label>חברת תעופה</label><input value={airline} onChange={(e) => setAirline(e.target.value)} placeholder="למשל אל על" /></div>
-          <div className="form-group"><label>מספר טיסה</label><input value={flightNumber} onChange={(e) => setFlightNumber(e.target.value)} placeholder="LY 001" /></div>
-          <div className="form-group"><label>נמל יציאה</label><input value={airportDeparture} onChange={(e) => setAirportDeparture(e.target.value)} placeholder="TLV" /></div>
-          <div className="form-group"><label>נמל נחיתה</label><input value={airportArrival} onChange={(e) => setAirportArrival(e.target.value)} placeholder="JFK" /></div>
-          <div className="form-group"><label>זמן יציאה</label><input type="datetime-local" value={departureDateTime} onChange={(e) => setDepartureDateTime(e.target.value)} /></div>
-          <div className="form-group"><label>זמן נחיתה</label><input type="datetime-local" value={arrivalDateTime} onChange={(e) => setArrivalDateTime(e.target.value)} /></div>
-          <div className="form-group"><label>גייט</label><input value={gate} onChange={(e) => setGate(e.target.value)} placeholder="B12" /></div>
-          <div className="form-group"><label>מושב</label><input value={seat} onChange={(e) => setSeat(e.target.value)} placeholder="12A" /></div>
-          <div className="form-group"><label>מחלקה</label><input value={cabinClass} onChange={(e) => setCabinClass(e.target.value)} placeholder="כלכלה / ביזנס" /></div>
-          <div className="form-group"><label>קישור לכרטיס</label><input type="url" value={ticketUrl} onChange={(e) => setTicketUrl(e.target.value)} placeholder="https://..." /></div>
-          <div className="form-group"><label>הערות כרטיס</label><input value={ticketNotes} onChange={(e) => setTicketNotes(e.target.value)} /></div>
-          <div className="form-group"><label>הערות</label><input value={flightNotes} onChange={(e) => setFlightNotes(e.target.value)} /></div>
-          <div className="form-actions">
-            <button type="submit" className="btn btn-primary">שמור טיסה</button>
-            <button type="button" onClick={resetFlightForm} className="btn btn-ghost">ביטול</button>
-          </div>
-        </form>
-      )}
-
-      {/* Accommodations */}
-      <h2 className="section-block">לינה</h2>
-      {accommodations.length === 0 ? (
-        <p style={{ color: 'var(--color-text-muted)' }}>אין לינה</p>
-      ) : (
-        <ul className="list-bare">
-          {accommodations.map((a) => (
-            <li key={a.id} className="card">
-              <strong>{a.name}</strong>
-              {a.address && <><br /><small>{a.address}</small></>}
-              <br /><small>כניסה: {a.checkInDate} | יציאה: {a.checkOutDate}</small>
-              <LocationActionLinks address={a.address} lat={a.lat} lng={a.lng} showMapAnchor mapAnchorId="trip-map" />
-            </li>
-          ))}
-        </ul>
-      )}
-      {canEdit && !showAccForm && <button type="button" onClick={() => setShowAccForm(true)} className="btn btn-primary" style={{ marginTop: 'var(--space-sm)' }}>הוסף לינה</button>}
-      {canEdit && showAccForm && (
-        <form onSubmit={handleAddAccommodation} className="card" style={{ marginTop: 'var(--space-sm)', display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
-          <div className="form-group"><label>שם</label><input value={accName} onChange={(e) => setAccName(e.target.value)} required /></div>
-          <div className="form-group"><label>כתובת</label><input value={accAddress} onChange={(e) => setAccAddress(e.target.value)} /></div>
-          <div className="form-group">
-            <label>מיקום על המפה</label>
-            <LocationPickerMap onPoint={handleAccMapPoint} selectedLat={accLat} selectedLng={accLng} height={200} />
-            <button type="button" onClick={handleAccGps} className="btn btn-ghost" style={{ marginTop: 'var(--space-xs)' }} disabled={accGpsLoading}>{accGpsLoading ? 'מקבל מיקום...' : 'מיקום נוכחי'}</button>
-            {accGpsError && <p style={{ color: 'var(--color-error)', fontSize: '0.85em', margin: 'var(--space-xs) 0 0 0' }}>{accGpsError}</p>}
-          </div>
-          <div className="form-group"><label>תאריך כניסה</label><input type="date" value={accCheckIn} onChange={(e) => setAccCheckIn(e.target.value)} required /></div>
-          <div className="form-group"><label>תאריך יציאה</label><input type="date" value={accCheckOut} onChange={(e) => setAccCheckOut(e.target.value)} required /></div>
-          <div className="form-actions">
-            <button type="submit" className="btn btn-primary">שמור לינה</button>
-            <button type="button" onClick={resetAccForm} className="btn btn-ghost">ביטול</button>
-          </div>
-        </form>
-      )}
-
-      {/* Attractions */}
-      <h2 className="section-block">אטרקציות</h2>
-      {attractions.length === 0 ? (
-        <p style={{ color: 'var(--color-text-muted)' }}>אין אטרקציות</p>
-      ) : (
-        <ul className="list-bare">
-          {attractions.map((a) => (
-            <li key={a.id} className="card">
-              <strong>{a.name}</strong>
-              {a.address && <><br /><small>{a.address}</small></>}
-              {a.dayIndexes?.length > 0 && <><br /><small>ימים: {a.dayIndexes.join(', ')}</small></>}
-              <LocationActionLinks address={a.address} lat={a.lat} lng={a.lng} />
-            </li>
-          ))}
-        </ul>
-      )}
-      {canEdit && !showAttrForm && <button type="button" onClick={() => setShowAttrForm(true)} className="btn btn-primary" style={{ marginTop: 'var(--space-sm)' }}>הוסף אטרקציה</button>}
-      {canEdit && showAttrForm && (
-        <form onSubmit={handleAddAttraction} className="card" style={{ marginTop: 'var(--space-sm)', display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
-          <div className="form-group"><label>שם</label><input value={attrName} onChange={(e) => setAttrName(e.target.value)} required /></div>
-          <div className="form-group"><label>כתובת</label><input value={attrAddress} onChange={(e) => setAttrAddress(e.target.value)} /></div>
-          <div className="form-group"><label>ימי טיול (מפרידים בפסיק, למשל: 0, 1, 2)</label><input value={attrDayIndexesStr} onChange={(e) => setAttrDayIndexesStr(e.target.value)} placeholder="0, 1, 2" /></div>
-          <div className="form-group">
-            <label>מיקום על המפה (אופציונלי)</label>
-            {attrReverseGeocoding && <p style={{ fontSize: '0.9em', marginBottom: 'var(--space-sm)' }}>מחפש כתובת...</p>}
-            <LocationPickerMap onPoint={handleAttrMapPoint} selectedLat={attrLat} selectedLng={attrLng} height={200} />
-          </div>
-          <div className="form-actions">
-            <button type="submit" className="btn btn-primary">שמור אטרקציה</button>
-            <button type="button" onClick={resetAttrForm} className="btn btn-ghost">ביטול</button>
-          </div>
-        </form>
-      )}
-
-      {/* Smart suggestions */}
-      {trip.destination && (
-        <section className="section-block">
-          <h2>הצעות חכמות</h2>
-          <TripSuggestions destination={trip.destination} onAddAttraction={(name, lat, lng) => addAttraction({ tripId: id, name, address: '', dayIndexes: [], lat, lng })} />
-        </section>
-      )}
-
-      {/* Shopping */}
-      <h2 className="section-block">רשימות קניות</h2>
-      {shoppingItems.length === 0 ? (
-        <p style={{ color: 'var(--color-text-muted)' }}>אין פריטים ברשימה</p>
-      ) : (
-        <ul className="list-bare">
-          {shoppingItems.map((item) => (
-            <li key={item.id} className="card" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
-              {canEdit ? (
-                <input type="checkbox" checked={item.done} onChange={() => toggleShoppingItem(item.id)} aria-label={item.text} />
-              ) : (
-                <span style={{ width: '1.2em', textAlign: 'center' }}>{item.done ? '✓' : ''}</span>
-              )}
-              <span style={{ flex: 1, textAlign: 'right', textDecoration: item.done ? 'line-through' : undefined, color: item.done ? 'var(--color-text-muted)' : undefined }}>{item.text}</span>
-              {canEdit && <button type="button" onClick={() => deleteShoppingItem(item.id)} className="btn btn-ghost" aria-label="מחק">מחק</button>}
-            </li>
-          ))}
-        </ul>
-      )}
-      {canEdit && (
-        <form onSubmit={handleAddShoppingItem} className="form-row" style={{ marginTop: 'var(--space-sm)' }}>
-          <input value={newItemText} onChange={(e) => setNewItemText(e.target.value)} placeholder="הוסף פריט" aria-label="פריט חדש" style={{ flex: 1, minWidth: 0 }} />
-          <button type="submit" className="btn btn-primary">הוסף</button>
-        </form>
-      )}
-
-      {/* Budget */}
-      <h2 className="section-block">תקציב והוצאות</h2>
-      {trip.budget != null && trip.budget > 0 && <p><strong>תקציב מתוכנן:</strong> ₪{trip.budget.toLocaleString()}</p>}
-      <p><strong>סה״כ הוצאות:</strong> ₪{totalSpent.toLocaleString()}</p>
-      {trip.budget != null && trip.budget > 0 && (
-        <p style={{ color: totalSpent > trip.budget ? 'var(--color-danger)' : 'var(--color-success)', fontWeight: 500 }}>
-          {totalSpent <= trip.budget ? `נותר: ₪${(trip.budget - totalSpent).toLocaleString()}` : `חריגה: ₪${(totalSpent - trip.budget).toLocaleString()}`}
-        </p>
-      )}
-      <ul className="list-bare">
-        {expenses.map((e) => (
-          <li key={e.id} className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 'var(--space-sm)' }}>
-            <span style={{ flex: 1, textAlign: 'right' }}>{e.description}</span>
-            <span style={{ fontWeight: 500 }}>₪{e.amount.toLocaleString()}</span>
-            {canEdit && <button type="button" onClick={() => deleteExpense(e.id)} className="btn btn-ghost" aria-label="מחק">מחק</button>}
-          </li>
+      {/* Section tiles grid */}
+      <div className="section-grid">
+        {visibleSections.map((s) => (
+          <button
+            key={s.id}
+            type="button"
+            className={`section-tile${activeSection === s.id ? ' active' : ''}`}
+            onClick={() => toggleSection(s.id)}
+          >
+            {sectionCounts[s.id] > 0 && <span className="tile-count">{sectionCounts[s.id]}</span>}
+            <span className="tile-icon">{s.icon}</span>
+            <span className="tile-label">{s.label}</span>
+          </button>
         ))}
-      </ul>
-      {canEdit && !showExpForm && <button type="button" onClick={() => setShowExpForm(true)} className="btn btn-primary" style={{ marginTop: 'var(--space-sm)' }}>הוסף הוצאה</button>}
-      {canEdit && showExpForm && (
-        <form onSubmit={handleAddExpense} className="form-row" style={{ marginTop: 'var(--space-sm)' }}>
-          <input value={expDesc} onChange={(e) => setExpDesc(e.target.value)} placeholder="תיאור" required style={{ flex: 1, minWidth: 0 }} />
-          <input type="number" step="any" min="0" value={expAmount} onChange={(e) => setExpAmount(e.target.value)} placeholder="סכום" required style={{ width: '100px' }} />
-          <button type="submit" className="btn btn-primary">הוסף</button>
-          <button type="button" onClick={() => setShowExpForm(false)} className="btn btn-ghost">ביטול</button>
-        </form>
+      </div>
+
+      {/* Active section panel */}
+      {activeSection === 'days' && (
+        <div className="section-panel">
+          <div className="section-panel-header">
+            <h2>ימים</h2>
+            <button type="button" onClick={() => setActiveSection(null)} className="btn btn-ghost">סגור</button>
+          </div>
+          {days.length === 0 ? (
+            <p style={{ color: 'var(--color-text-muted)' }}>אין ימים (בדוק תאריכי התחלה וסיום)</p>
+          ) : (
+            <div className="day-chips">
+              {days.map((day) => (
+                <Link key={day.dayIndex} to={`/trip/${id}/day/${day.dayIndex}`} className="day-chip">
+                  <span className="day-num">יום {day.dayIndex + 1}</span>
+                  <span className="day-date">{day.date}</span>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
       )}
 
-      {/* Pinned places */}
-      <h2 className="section-block">מיקומים שמורים</h2>
-      <ul className="list-bare">
-        {pinnedPlaces.map((p: PinnedPlace) => {
-          const mapsLink = pinnedPlaceMapsUrl(p);
-          return (
-            <li key={p.id} className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 'var(--space-sm)' }}>
-              <span style={{ flex: 1, textAlign: 'right' }}>
-                <strong>{p.name}</strong>
-                {(p.address || (p.lat != null && p.lng != null)) && (
-                  <><br /><small>{p.address ?? `${p.lat!.toFixed(5)}, ${p.lng!.toFixed(5)}`}</small></>
-                )}
-              </span>
-              <span style={{ display: 'flex', gap: 'var(--space-xs)', flexWrap: 'wrap' }}>
-                {mapsLink && <a href={mapsLink} target="_blank" rel="noopener noreferrer" className="btn btn-ghost" style={{ textDecoration: 'none' }}>צפה במפה</a>}
-                {canEdit && <button type="button" onClick={() => deletePinnedPlace(p.id)} className="btn btn-ghost">מחק</button>}
-              </span>
-            </li>
-          );
-        })}
-      </ul>
-      {canEdit && !showPinForm && <button type="button" onClick={() => setShowPinForm(true)} className="btn btn-primary" style={{ marginTop: 'var(--space-sm)' }}>נעץ מיקום</button>}
-      {canEdit && showPinForm && (
-        <form onSubmit={handleAddPinnedPlace} className="card" style={{ marginTop: 'var(--space-sm)', display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
-          <div className="form-group"><label>שם</label><input value={pinName} onChange={(e) => setPinName(e.target.value)} required placeholder="שם המקום" /></div>
-          <div className="form-group"><label>כתובת (אופציונלי)</label><input value={pinAddress} onChange={(e) => setPinAddress(e.target.value)} /></div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-sm)', alignItems: 'center' }}>
-            <button type="button" onClick={handlePinGps} className="btn btn-secondary" disabled={pinGpsLoading}>{pinGpsLoading ? 'מקבל מיקום...' : 'מיקום נוכחי (GPS)'}</button>
-            <span style={{ fontSize: '0.9em', color: 'var(--color-text-muted)' }}>או נעץ על המפה:</span>
+      {activeSection === 'map' && (
+        <div className="section-panel">
+          <div className="section-panel-header">
+            <h2>מפה</h2>
+            <button type="button" onClick={() => setActiveSection(null)} className="btn btn-ghost">סגור</button>
           </div>
-          {pinGpsError && <p style={{ color: 'var(--color-danger)', fontSize: '0.9em', margin: 0 }}>{pinGpsError}</p>}
-          {pinLat != null && pinLng != null && <p style={{ fontSize: '0.85em', color: 'var(--color-text-muted)', margin: 0 }}>נבחר: {pinLat.toFixed(5)}, {pinLng.toFixed(5)}</p>}
-          <LocationPickerMap onPoint={handlePinMapPoint} selectedLat={pinLat} selectedLng={pinLng} height={200} />
-          <div className="form-actions">
-            <button type="submit" className="btn btn-primary">שמור</button>
-            <button type="button" onClick={resetPinForm} className="btn btn-ghost">ביטול</button>
-          </div>
-        </form>
+          <div id="trip-map"><DayMap points={allMapPoints} /></div>
+        </div>
       )}
 
-      {/* Reminders */}
-      <section className="section-block"><h2>תזכורות</h2><TripReminders tripId={id} tripName={trip.name} /></section>
+      {activeSection === 'flights' && (
+        <div className="section-panel">
+          <div className="section-panel-header">
+            <h2>טיסות</h2>
+            <button type="button" onClick={() => setActiveSection(null)} className="btn btn-ghost">סגור</button>
+          </div>
+          {flights.length === 0 ? (
+            <p style={{ color: 'var(--color-text-muted)' }}>אין טיסות</p>
+          ) : (
+            <ul className="list-bare">
+              {flights.map((f: Flight) => (
+                <li key={f.id} className="card">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 'var(--space-sm)' }}>
+                    <div>
+                      {(f.airline || f.flightNumber) && <strong>{[f.airline, f.flightNumber].filter(Boolean).join(' ')}</strong>}
+                      {(f.airportDeparture || f.airportArrival) && <><br /><span>{f.airportDeparture} → {f.airportArrival}</span></>}
+                      {f.departureDateTime && <><br /><small>יציאה: {f.departureDateTime}</small></>}
+                      {f.arrivalDateTime && <><br /><small>נחיתה: {f.arrivalDateTime}</small></>}
+                      {f.gate && <><br /><small>גייט: {f.gate}</small></>}
+                      {f.seat && <><br /><small>מושב: {f.seat}</small></>}
+                      {f.cabinClass && <><br /><small>מחלקה: {f.cabinClass}</small></>}
+                      {f.ticketUrl && <><br /><a href={f.ticketUrl} target="_blank" rel="noopener noreferrer">קישור לכרטיס</a></>}
+                      {f.ticketNotes && <><br /><small>{f.ticketNotes}</small></>}
+                      {f.notes && <><br /><small>{f.notes}</small></>}
+                    </div>
+                    {canEdit && <button type="button" onClick={() => deleteFlight(f.id)} className="btn btn-ghost" aria-label="מחק טיסה">מחק</button>}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+          {canEdit && !showFlightForm && <button type="button" onClick={() => setShowFlightForm(true)} className="btn btn-primary" style={{ marginTop: 'var(--space-sm)' }}>הוסף טיסה</button>}
+          {canEdit && showFlightForm && (
+            <form onSubmit={handleAddFlight} className="card" style={{ marginTop: 'var(--space-sm)', display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)', maxWidth: 420 }}>
+              <div className="form-group"><label>חברת תעופה</label><input value={airline} onChange={(e) => setAirline(e.target.value)} placeholder="למשל אל על" /></div>
+              <div className="form-group"><label>מספר טיסה</label><input value={flightNumber} onChange={(e) => setFlightNumber(e.target.value)} placeholder="LY 001" /></div>
+              <div className="form-group"><label>נמל יציאה</label><input value={airportDeparture} onChange={(e) => setAirportDeparture(e.target.value)} placeholder="TLV" /></div>
+              <div className="form-group"><label>נמל נחיתה</label><input value={airportArrival} onChange={(e) => setAirportArrival(e.target.value)} placeholder="JFK" /></div>
+              <div className="form-group"><label>זמן יציאה</label><input type="datetime-local" value={departureDateTime} onChange={(e) => setDepartureDateTime(e.target.value)} /></div>
+              <div className="form-group"><label>זמן נחיתה</label><input type="datetime-local" value={arrivalDateTime} onChange={(e) => setArrivalDateTime(e.target.value)} /></div>
+              <div className="form-group"><label>גייט</label><input value={gate} onChange={(e) => setGate(e.target.value)} placeholder="B12" /></div>
+              <div className="form-group"><label>מושב</label><input value={seat} onChange={(e) => setSeat(e.target.value)} placeholder="12A" /></div>
+              <div className="form-group"><label>מחלקה</label><input value={cabinClass} onChange={(e) => setCabinClass(e.target.value)} placeholder="כלכלה / ביזנס" /></div>
+              <div className="form-group"><label>קישור לכרטיס</label><input type="url" value={ticketUrl} onChange={(e) => setTicketUrl(e.target.value)} placeholder="https://..." /></div>
+              <div className="form-group"><label>הערות כרטיס</label><input value={ticketNotes} onChange={(e) => setTicketNotes(e.target.value)} /></div>
+              <div className="form-group"><label>הערות</label><input value={flightNotes} onChange={(e) => setFlightNotes(e.target.value)} /></div>
+              <div className="form-actions">
+                <button type="submit" className="btn btn-primary">שמור טיסה</button>
+                <button type="button" onClick={resetFlightForm} className="btn btn-ghost">ביטול</button>
+              </div>
+            </form>
+          )}
+        </div>
+      )}
 
-      {/* Documents */}
-      <section className="section-block"><TripDocuments tripId={id} /></section>
+      {activeSection === 'accommodations' && (
+        <div className="section-panel">
+          <div className="section-panel-header">
+            <h2>לינה</h2>
+            <button type="button" onClick={() => setActiveSection(null)} className="btn btn-ghost">סגור</button>
+          </div>
+          {accommodations.length === 0 ? (
+            <p style={{ color: 'var(--color-text-muted)' }}>אין לינה</p>
+          ) : (
+            <ul className="list-bare">
+              {accommodations.map((a) => (
+                <li key={a.id} className="card">
+                  <strong>{a.name}</strong>
+                  {a.address && <><br /><small>{a.address}</small></>}
+                  <br /><small>כניסה: {a.checkInDate} | יציאה: {a.checkOutDate}</small>
+                  <LocationActionLinks address={a.address} lat={a.lat} lng={a.lng} showMapAnchor mapAnchorId="trip-map" />
+                </li>
+              ))}
+            </ul>
+          )}
+          {canEdit && !showAccForm && <button type="button" onClick={() => setShowAccForm(true)} className="btn btn-primary" style={{ marginTop: 'var(--space-sm)' }}>הוסף לינה</button>}
+          {canEdit && showAccForm && (
+            <form onSubmit={handleAddAccommodation} className="card" style={{ marginTop: 'var(--space-sm)', display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+              <div className="form-group"><label>שם</label><input value={accName} onChange={(e) => setAccName(e.target.value)} required /></div>
+              <div className="form-group"><label>כתובת</label><input value={accAddress} onChange={(e) => setAccAddress(e.target.value)} /></div>
+              <div className="form-group">
+                <label>מיקום על המפה</label>
+                <LocationPickerMap onPoint={handleAccMapPoint} selectedLat={accLat} selectedLng={accLng} height={200} />
+                <button type="button" onClick={handleAccGps} className="btn btn-ghost" style={{ marginTop: 'var(--space-xs)' }} disabled={accGpsLoading}>{accGpsLoading ? 'מקבל מיקום...' : 'מיקום נוכחי'}</button>
+                {accGpsError && <p style={{ color: 'var(--color-error)', fontSize: '0.85em', margin: 'var(--space-xs) 0 0 0' }}>{accGpsError}</p>}
+              </div>
+              <div className="form-group"><label>תאריך כניסה</label><input type="date" value={accCheckIn} onChange={(e) => setAccCheckIn(e.target.value)} required /></div>
+              <div className="form-group"><label>תאריך יציאה</label><input type="date" value={accCheckOut} onChange={(e) => setAccCheckOut(e.target.value)} required /></div>
+              <div className="form-actions">
+                <button type="submit" className="btn btn-primary">שמור לינה</button>
+                <button type="button" onClick={resetAccForm} className="btn btn-ghost">ביטול</button>
+              </div>
+            </form>
+          )}
+        </div>
+      )}
+
+      {activeSection === 'attractions' && (
+        <div className="section-panel">
+          <div className="section-panel-header">
+            <h2>אטרקציות</h2>
+            <button type="button" onClick={() => setActiveSection(null)} className="btn btn-ghost">סגור</button>
+          </div>
+          {attractions.length === 0 ? (
+            <p style={{ color: 'var(--color-text-muted)' }}>אין אטרקציות</p>
+          ) : (
+            <ul className="list-bare">
+              {attractions.map((a) => (
+                <li key={a.id} className="card">
+                  <strong>{a.name}</strong>
+                  {a.address && <><br /><small>{a.address}</small></>}
+                  {a.dayIndexes?.length > 0 && <><br /><small>ימים: {a.dayIndexes.join(', ')}</small></>}
+                  <LocationActionLinks address={a.address} lat={a.lat} lng={a.lng} />
+                </li>
+              ))}
+            </ul>
+          )}
+          {canEdit && !showAttrForm && <button type="button" onClick={() => setShowAttrForm(true)} className="btn btn-primary" style={{ marginTop: 'var(--space-sm)' }}>הוסף אטרקציה</button>}
+          {canEdit && showAttrForm && (
+            <form onSubmit={handleAddAttraction} className="card" style={{ marginTop: 'var(--space-sm)', display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+              <div className="form-group"><label>שם</label><input value={attrName} onChange={(e) => setAttrName(e.target.value)} required /></div>
+              <div className="form-group"><label>כתובת</label><input value={attrAddress} onChange={(e) => setAttrAddress(e.target.value)} /></div>
+              <div className="form-group"><label>ימי טיול (מפרידים בפסיק, למשל: 0, 1, 2)</label><input value={attrDayIndexesStr} onChange={(e) => setAttrDayIndexesStr(e.target.value)} placeholder="0, 1, 2" /></div>
+              <div className="form-group">
+                <label>מיקום על המפה (אופציונלי)</label>
+                {attrReverseGeocoding && <p style={{ fontSize: '0.9em', marginBottom: 'var(--space-sm)' }}>מחפש כתובת...</p>}
+                <LocationPickerMap onPoint={handleAttrMapPoint} selectedLat={attrLat} selectedLng={attrLng} height={200} />
+              </div>
+              <div className="form-actions">
+                <button type="submit" className="btn btn-primary">שמור אטרקציה</button>
+                <button type="button" onClick={resetAttrForm} className="btn btn-ghost">ביטול</button>
+              </div>
+            </form>
+          )}
+        </div>
+      )}
+
+      {activeSection === 'suggestions' && trip.destination && (
+        <div className="section-panel">
+          <div className="section-panel-header">
+            <h2>הצעות חכמות</h2>
+            <button type="button" onClick={() => setActiveSection(null)} className="btn btn-ghost">סגור</button>
+          </div>
+          <TripSuggestions destination={trip.destination} onAddAttraction={(name, lat, lng) => addAttraction({ tripId: id, name, address: '', dayIndexes: [], lat, lng })} />
+        </div>
+      )}
+
+      {activeSection === 'shopping' && (
+        <div className="section-panel">
+          <div className="section-panel-header">
+            <h2>רשימות קניות</h2>
+            <button type="button" onClick={() => setActiveSection(null)} className="btn btn-ghost">סגור</button>
+          </div>
+          {shoppingItems.length === 0 ? (
+            <p style={{ color: 'var(--color-text-muted)' }}>אין פריטים ברשימה</p>
+          ) : (
+            <ul className="list-bare">
+              {shoppingItems.map((item) => (
+                <li key={item.id} className="card" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+                  {canEdit ? (
+                    <input type="checkbox" checked={item.done} onChange={() => toggleShoppingItem(item.id)} aria-label={item.text} />
+                  ) : (
+                    <span style={{ width: '1.2em', textAlign: 'center' }}>{item.done ? '✓' : ''}</span>
+                  )}
+                  <span style={{ flex: 1, textAlign: 'right', textDecoration: item.done ? 'line-through' : undefined, color: item.done ? 'var(--color-text-muted)' : undefined }}>{item.text}</span>
+                  {canEdit && <button type="button" onClick={() => deleteShoppingItem(item.id)} className="btn btn-ghost" aria-label="מחק">מחק</button>}
+                </li>
+              ))}
+            </ul>
+          )}
+          {canEdit && (
+            <form onSubmit={handleAddShoppingItem} className="form-row" style={{ marginTop: 'var(--space-sm)' }}>
+              <input value={newItemText} onChange={(e) => setNewItemText(e.target.value)} placeholder="הוסף פריט" aria-label="פריט חדש" style={{ flex: 1, minWidth: 0 }} />
+              <button type="submit" className="btn btn-primary">הוסף</button>
+            </form>
+          )}
+        </div>
+      )}
+
+      {activeSection === 'budget' && (
+        <div className="section-panel">
+          <div className="section-panel-header">
+            <h2>תקציב והוצאות</h2>
+            <button type="button" onClick={() => setActiveSection(null)} className="btn btn-ghost">סגור</button>
+          </div>
+          {trip.budget != null && trip.budget > 0 && <p><strong>תקציב מתוכנן:</strong> ₪{trip.budget.toLocaleString()}</p>}
+          <p><strong>סה״כ הוצאות:</strong> ₪{totalSpent.toLocaleString()}</p>
+          {trip.budget != null && trip.budget > 0 && (
+            <p style={{ color: totalSpent > trip.budget ? 'var(--color-danger)' : 'var(--color-success)', fontWeight: 500 }}>
+              {totalSpent <= trip.budget ? `נותר: ₪${(trip.budget - totalSpent).toLocaleString()}` : `חריגה: ₪${(totalSpent - trip.budget).toLocaleString()}`}
+            </p>
+          )}
+          <ul className="list-bare">
+            {expenses.map((e) => (
+              <li key={e.id} className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 'var(--space-sm)' }}>
+                <span style={{ flex: 1, textAlign: 'right' }}>{e.description}</span>
+                <span style={{ fontWeight: 500 }}>₪{e.amount.toLocaleString()}</span>
+                {canEdit && <button type="button" onClick={() => deleteExpense(e.id)} className="btn btn-ghost" aria-label="מחק">מחק</button>}
+              </li>
+            ))}
+          </ul>
+          {canEdit && !showExpForm && <button type="button" onClick={() => setShowExpForm(true)} className="btn btn-primary" style={{ marginTop: 'var(--space-sm)' }}>הוסף הוצאה</button>}
+          {canEdit && showExpForm && (
+            <form onSubmit={handleAddExpense} className="form-row" style={{ marginTop: 'var(--space-sm)' }}>
+              <input value={expDesc} onChange={(e) => setExpDesc(e.target.value)} placeholder="תיאור" required style={{ flex: 1, minWidth: 0 }} />
+              <input type="number" step="any" min="0" value={expAmount} onChange={(e) => setExpAmount(e.target.value)} placeholder="סכום" required style={{ width: '100px' }} />
+              <button type="submit" className="btn btn-primary">הוסף</button>
+              <button type="button" onClick={() => setShowExpForm(false)} className="btn btn-ghost">ביטול</button>
+            </form>
+          )}
+        </div>
+      )}
+
+      {activeSection === 'pinned' && (
+        <div className="section-panel">
+          <div className="section-panel-header">
+            <h2>מיקומים שמורים</h2>
+            <button type="button" onClick={() => setActiveSection(null)} className="btn btn-ghost">סגור</button>
+          </div>
+          <ul className="list-bare">
+            {pinnedPlaces.map((p: PinnedPlace) => {
+              const mapsLink = pinnedPlaceMapsUrl(p);
+              return (
+                <li key={p.id} className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 'var(--space-sm)' }}>
+                  <span style={{ flex: 1, textAlign: 'right' }}>
+                    <strong>{p.name}</strong>
+                    {(p.address || (p.lat != null && p.lng != null)) && (
+                      <><br /><small>{p.address ?? `${p.lat!.toFixed(5)}, ${p.lng!.toFixed(5)}`}</small></>
+                    )}
+                  </span>
+                  <span style={{ display: 'flex', gap: 'var(--space-xs)', flexWrap: 'wrap' }}>
+                    {mapsLink && <a href={mapsLink} target="_blank" rel="noopener noreferrer" className="btn btn-ghost" style={{ textDecoration: 'none' }}>צפה במפה</a>}
+                    {canEdit && <button type="button" onClick={() => deletePinnedPlace(p.id)} className="btn btn-ghost">מחק</button>}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+          {canEdit && !showPinForm && <button type="button" onClick={() => setShowPinForm(true)} className="btn btn-primary" style={{ marginTop: 'var(--space-sm)' }}>נעץ מיקום</button>}
+          {canEdit && showPinForm && (
+            <form onSubmit={handleAddPinnedPlace} className="card" style={{ marginTop: 'var(--space-sm)', display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+              <div className="form-group"><label>שם</label><input value={pinName} onChange={(e) => setPinName(e.target.value)} required placeholder="שם המקום" /></div>
+              <div className="form-group"><label>כתובת (אופציונלי)</label><input value={pinAddress} onChange={(e) => setPinAddress(e.target.value)} /></div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-sm)', alignItems: 'center' }}>
+                <button type="button" onClick={handlePinGps} className="btn btn-secondary" disabled={pinGpsLoading}>{pinGpsLoading ? 'מקבל מיקום...' : 'מיקום נוכחי (GPS)'}</button>
+                <span style={{ fontSize: '0.9em', color: 'var(--color-text-muted)' }}>או נעץ על המפה:</span>
+              </div>
+              {pinGpsError && <p style={{ color: 'var(--color-danger)', fontSize: '0.9em', margin: 0 }}>{pinGpsError}</p>}
+              {pinLat != null && pinLng != null && <p style={{ fontSize: '0.85em', color: 'var(--color-text-muted)', margin: 0 }}>נבחר: {pinLat.toFixed(5)}, {pinLng.toFixed(5)}</p>}
+              <LocationPickerMap onPoint={handlePinMapPoint} selectedLat={pinLat} selectedLng={pinLng} height={200} />
+              <div className="form-actions">
+                <button type="submit" className="btn btn-primary">שמור</button>
+                <button type="button" onClick={resetPinForm} className="btn btn-ghost">ביטול</button>
+              </div>
+            </form>
+          )}
+        </div>
+      )}
+
+      {activeSection === 'reminders' && (
+        <div className="section-panel">
+          <div className="section-panel-header">
+            <h2>תזכורות</h2>
+            <button type="button" onClick={() => setActiveSection(null)} className="btn btn-ghost">סגור</button>
+          </div>
+          <TripReminders tripId={id} tripName={trip.name} />
+        </div>
+      )}
+
+      {activeSection === 'documents' && (
+        <div className="section-panel">
+          <div className="section-panel-header">
+            <h2>מסמכים</h2>
+            <button type="button" onClick={() => setActiveSection(null)} className="btn btn-ghost">סגור</button>
+          </div>
+          <TripDocuments tripId={id} />
+        </div>
+      )}
     </div>
   );
 }
