@@ -8,7 +8,7 @@ import TripDocuments from '../components/TripDocuments';
 import { api, isApiEnabled, type TripMember } from '../api/client';
 import { exportFileNameFromTripName, getShareBaseOrigin } from './tripUtils';
 import { reverseGeocode } from '../utils/geocode';
-import { mapsSearchUrl, mapsNavigationUrl } from '../utils/maps';
+import { mapsSearchUrl, mapsNavigationUrl, mapsTransitUrl, happyCowUrl } from '../utils/maps';
 import type { Trip, Activity, Accommodation, Attraction, ShoppingItem, PinnedPlace, Flight } from '../types';
 
 /** Modal: list members, invite by email, change role, remove (owner only). */
@@ -753,7 +753,11 @@ export default function Trip() {
                 <div style={{ marginTop: 'var(--space-xs)', display: 'flex', gap: 'var(--space-sm)', flexWrap: 'wrap' }}>
                   <a href="#trip-map" className="btn btn-ghost" style={{ fontSize: '0.85em', padding: '4px 8px' }}>ראה על המפה</a>
                   <a href={mapsNavigationUrl({ address: a.address, lat: a.lat, lng: a.lng })} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.85em', padding: '4px 8px' }}>פתח ניווט</a>
+                  <a href={mapsTransitUrl({ address: a.address, lat: a.lat, lng: a.lng })} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.85em', padding: '4px 8px' }}>תחבורה ציבורית</a>
                   <a href={mapsSearchUrl(a.address)} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.85em', padding: '4px 8px' }}>חיפוש במפות</a>
+                  {happyCowUrl({ lat: a.lat, lng: a.lng, address: a.address }) && (
+                    <a href={happyCowUrl({ lat: a.lat, lng: a.lng, address: a.address })!} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.85em', padding: '4px 8px' }}>מסעדות טבעוניות</a>
+                  )}
                 </div>
               )}
             </li>
@@ -832,9 +836,13 @@ export default function Trip() {
                 <><br /><small>ימים: {a.dayIndexes.join(', ')}</small></>
               )}
               {(a.address || (a.lat != null && a.lng != null)) && (
-                <p style={{ marginTop: 'var(--space-xs)', marginBottom: 0 }}>
-                  <a href={mapsNavigationUrl({ address: a.address ?? '', lat: a.lat, lng: a.lng })} target="_blank" rel="noopener noreferrer" style={{ marginLeft: 'var(--space-sm)' }}>פתח ניווט</a>
-                  <a href={a.address ? mapsSearchUrl(a.address) : `https://www.google.com/maps/search/?api=1&query=${a.lat},${a.lng}`} target="_blank" rel="noopener noreferrer" style={{ marginLeft: 'var(--space-sm)' }}>חיפוש במפות</a>
+                <p style={{ marginTop: 'var(--space-xs)', marginBottom: 0, display: 'flex', flexWrap: 'wrap', gap: 'var(--space-sm)' }}>
+                  <a href={mapsNavigationUrl({ address: a.address ?? '', lat: a.lat, lng: a.lng })} target="_blank" rel="noopener noreferrer">פתח ניווט</a>
+                  <a href={mapsTransitUrl({ address: a.address ?? '', lat: a.lat, lng: a.lng })} target="_blank" rel="noopener noreferrer">תחבורה ציבורית</a>
+                  <a href={a.address ? mapsSearchUrl(a.address) : `https://www.google.com/maps/search/?api=1&query=${a.lat},${a.lng}`} target="_blank" rel="noopener noreferrer">חיפוש במפות</a>
+                  {happyCowUrl({ lat: a.lat, lng: a.lng, address: a.address }) && (
+                    <a href={happyCowUrl({ lat: a.lat, lng: a.lng, address: a.address })!} target="_blank" rel="noopener noreferrer">מסעדות טבעוניות</a>
+                  )}
                 </p>
               )}
             </li>

@@ -22,3 +22,21 @@ export function mapsNavigationUrl(options: {
   if (!destination) return mapsSearchUrl(address ?? '');
   return `https://www.google.com/maps/dir/?api=1&destination=${destination}`;
 }
+
+/** Google Maps directions using public transit. */
+export function mapsTransitUrl(options: { address?: string; lat?: number; lng?: number }): string {
+  const { address, lat, lng } = options;
+  const hasCoords = typeof lat === 'number' && typeof lng === 'number' && !Number.isNaN(lat) && !Number.isNaN(lng);
+  const destination = hasCoords ? `${lat},${lng}` : (address?.trim() ? encodeURIComponent(address.trim()) : '');
+  if (!destination) return mapsSearchUrl(address ?? '');
+  return `https://www.google.com/maps/dir/?api=1&destination=${destination}&travelmode=transit`;
+}
+
+/** Happy Cow search near coordinates or address (kosher/vegan restaurants). */
+export function happyCowUrl(options: { lat?: number; lng?: number; address?: string }): string | null {
+  const { lat, lng, address } = options;
+  const hasCoords = typeof lat === 'number' && typeof lng === 'number' && !Number.isNaN(lat) && !Number.isNaN(lng);
+  if (hasCoords) return `https://www.happycow.net/searchmap?lat=${lat}&lng=${lng}&zoom=15`;
+  if (address?.trim()) return `https://www.happycow.net/searchmap?s=${encodeURIComponent(address.trim())}`;
+  return null;
+}

@@ -21,7 +21,7 @@ import { useTripData } from '../context/TripContext';
 import type { Activity } from '../types';
 import { activityFieldsSchema, getFirstZodError } from '../schemas';
 import DayMap, { type MapPoint } from '../components/DayMap';
-import { mapsSearchUrl, mapsNavigationUrl } from '../utils/maps';
+import { mapsSearchUrl, mapsNavigationUrl, mapsTransitUrl, happyCowUrl } from '../utils/maps';
 
 export default function DayView() {
   const { id, dayIndex: dayIndexParam } = useParams<{ id: string; dayIndex: string }>();
@@ -171,7 +171,11 @@ export default function DayView() {
               <>
                 <a href="#day-map" className="btn btn-ghost" style={{ fontSize: '0.9em' }}>ראה על המפה</a>
                 <a href={mapsNavigationUrl({ address: accommodation.address, lat: accommodation.lat, lng: accommodation.lng })} target="_blank" rel="noopener noreferrer" className="btn btn-ghost" style={{ fontSize: '0.9em' }}>פתח ניווט</a>
+                <a href={mapsTransitUrl({ address: accommodation.address, lat: accommodation.lat, lng: accommodation.lng })} target="_blank" rel="noopener noreferrer" className="btn btn-ghost" style={{ fontSize: '0.9em' }}>תחבורה ציבורית</a>
                 <a href={mapsSearchUrl(accommodation.address)} target="_blank" rel="noopener noreferrer" className="btn btn-ghost" style={{ fontSize: '0.9em' }}>חיפוש במפות</a>
+                {happyCowUrl({ lat: accommodation.lat, lng: accommodation.lng, address: accommodation.address }) && (
+                  <a href={happyCowUrl({ lat: accommodation.lat, lng: accommodation.lng, address: accommodation.address })!} target="_blank" rel="noopener noreferrer" className="btn btn-ghost" style={{ fontSize: '0.9em' }}>מסעדות טבעוניות</a>
+                )}
               </>
             )}
           </div>
@@ -188,10 +192,14 @@ export default function DayView() {
                 {a.address && (
                   <>
                     <br /><small>{a.address}</small>
-                    {' '}
-                    <a href={mapsNavigationUrl({ address: a.address, lat: a.lat, lng: a.lng })} target="_blank" rel="noopener noreferrer">פתח ניווט</a>
-                    {' '}
-                    <a href={mapsSearchUrl(a.address)} target="_blank" rel="noopener noreferrer">חיפוש במפות</a>
+                    <span style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-sm)', marginTop: '2px' }}>
+                      <a href={mapsNavigationUrl({ address: a.address, lat: a.lat, lng: a.lng })} target="_blank" rel="noopener noreferrer">פתח ניווט</a>
+                      <a href={mapsTransitUrl({ address: a.address, lat: a.lat, lng: a.lng })} target="_blank" rel="noopener noreferrer">תחבורה ציבורית</a>
+                      <a href={mapsSearchUrl(a.address)} target="_blank" rel="noopener noreferrer">חיפוש במפות</a>
+                      {happyCowUrl({ lat: a.lat, lng: a.lng, address: a.address }) && (
+                        <a href={happyCowUrl({ lat: a.lat, lng: a.lng, address: a.address })!} target="_blank" rel="noopener noreferrer">מסעדות טבעוניות</a>
+                      )}
+                    </span>
                   </>
                 )}
               </li>
@@ -313,10 +321,14 @@ function SortableActivityCard({
           <p><strong>{activity.title}</strong>{activity.time ? ` – ${activity.time}` : ''}</p>
           {(activity.description || activity.address) && <p>{activity.description || activity.address}</p>}
           {activity.address && (
-            <>
-              <a href={mapsNavigationUrl({ address: activity.address, lat: activity.lat, lng: activity.lng })} target="_blank" rel="noopener noreferrer" style={{ marginRight: 'var(--space-sm)' }}>פתח ניווט</a>
-              <a href={mapsSearchUrl(activity.address)} target="_blank" rel="noopener noreferrer" style={{ marginRight: 'var(--space-sm)' }}>חיפוש במפות</a>
-            </>
+            <span style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-sm)' }}>
+              <a href={mapsNavigationUrl({ address: activity.address, lat: activity.lat, lng: activity.lng })} target="_blank" rel="noopener noreferrer">פתח ניווט</a>
+              <a href={mapsTransitUrl({ address: activity.address, lat: activity.lat, lng: activity.lng })} target="_blank" rel="noopener noreferrer">תחבורה ציבורית</a>
+              <a href={mapsSearchUrl(activity.address)} target="_blank" rel="noopener noreferrer">חיפוש במפות</a>
+              {happyCowUrl({ lat: activity.lat, lng: activity.lng, address: activity.address }) && (
+                <a href={happyCowUrl({ lat: activity.lat, lng: activity.lng, address: activity.address })!} target="_blank" rel="noopener noreferrer">מסעדות טבעוניות</a>
+              )}
+            </span>
           )}
           <p className="form-actions" style={{ marginTop: 'var(--space-sm)', marginBottom: 0 }}>
             <button type="button" onClick={(e) => { e.stopPropagation(); onStartEdit(); }} className="btn btn-secondary">ערוך</button>
