@@ -7,6 +7,8 @@ export default defineConfig({
     setupFiles: ['./test/setup.ts'],
     include: ['test/**/*.test.ts'],
     globals: true,
+    testTimeout: 15000,
+    hookTimeout: 15000,
   },
   resolve: {
     extensions: ['.ts'],

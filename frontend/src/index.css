@@ -1,35 +1,38 @@
-/* Design tokens – single source of truth */
+/* Design tokens */
 :root {
-  --color-primary: #0d9488;
-  --color-primary-hover: #0f766e;
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-primary-light: #dbeafe;
   --color-primary-contrast: #fff;
-  --color-accent: #b45309;
+  --color-accent: #f59e0b;
   --color-accent-muted: #fef3c7;
-  --color-bg: #fafaf9;
+  --color-bg: #f8fafc;
   --color-surface: #ffffff;
-  --color-text: #1c1917;
-  --color-text-muted: #78716c;
-  --color-border: #e7e5e4;
-  --color-error: #b91c1c;
-  --color-danger: #b91c1c;
+  --color-text: #0f172a;
+  --color-text-muted: #64748b;
+  --color-border: #e2e8f0;
+  --color-error: #dc2626;
+  --color-danger: #dc2626;
+  --color-success: #16a34a;
   --radius-sm: 6px;
   --radius-md: 10px;
-  --radius-lg: 14px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
   --space-xs: 4px;
   --space-sm: 8px;
   --space-md: 16px;
   --space-lg: 24px;
   --space-xl: 32px;
-  --space-2xl: 40px;
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
-  --font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --space-2xl: 48px;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.1);
+  --font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
 
-/* Mobile-first base – light default for travel app */
 :root {
   font-family: var(--font-family);
-  line-height: 1.5;
+  line-height: 1.6;
   font-weight: 400;
   color: var(--color-text);
   background-color: var(--color-bg);
@@ -44,10 +47,12 @@
 a {
   font-weight: 500;
   color: var(--color-primary);
-  text-decoration: inherit;
+  text-decoration: none;
+  transition: color 0.15s;
 }
 a:hover {
   color: var(--color-primary-hover);
+  text-decoration: underline;
 }
 
 body {
@@ -58,7 +63,6 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Touch-friendly: comfortable tap targets on mobile */
 button,
 input[type="submit"],
 input[type="button"] {
@@ -69,13 +73,13 @@ input[type="button"] {
 button {
   border-radius: var(--radius-md);
   border: 1px solid transparent;
-  font-size: 1em;
+  font-size: 0.95em;
   font-weight: 500;
   font-family: inherit;
   background-color: var(--color-surface);
   color: var(--color-text);
   cursor: pointer;
-  transition: border-color 0.2s, background-color 0.2s;
+  transition: all 0.15s ease;
 }
 button:hover {
   border-color: var(--color-primary);
@@ -89,11 +93,13 @@ button:focus-visible {
 input,
 select,
 textarea {
-  font-size: 16px; /* Prevents zoom on focus on iOS */
+  font-size: 16px;
   max-width: 100%;
 }
 
 h1 {
-  font-size: clamp(1.5rem, 5vw, 2.5rem);
+  font-size: clamp(1.5rem, 5vw, 2.25rem);
   line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }

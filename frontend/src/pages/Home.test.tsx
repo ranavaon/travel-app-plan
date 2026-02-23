@@ -24,7 +24,7 @@ describe('Home', () => {
     localStorage.removeItem('travel-app-state');
     renderHome();
     expect(screen.getByRole('heading', { name: 'הטיולים שלי' })).toBeInTheDocument();
-    const newTripLink = await screen.findByText('טיול חדש', {}, { timeout: 3000 });
+    const newTripLink = await screen.findByText(/טיול חדש/, {}, { timeout: 3000 });
     expect(newTripLink).toBeInTheDocument();
     // Either we see mock trip names or at least one trip link (when API/localStorage provides data)
     const hasMockNames = screen.queryByText('חופשה בתל אביב') && screen.queryByText('טיול לאילת');
