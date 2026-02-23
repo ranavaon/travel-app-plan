@@ -10,6 +10,7 @@ function wrapWithAuth(children: React.ReactNode) {
 const apiEnabledRef = { current: false };
 const mockAddExpense = vi.fn();
 const mockAddPinnedPlace = vi.fn();
+const mockCreateTrip = vi.fn();
 
 vi.mock('../api/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../api/client')>();
@@ -18,6 +19,7 @@ vi.mock('../api/client', async (importOriginal) => {
     isApiEnabled: () => apiEnabledRef.current,
     api: {
       ...actual.api,
+      createTrip: (...args: unknown[]) => mockCreateTrip(...args),
       addExpense: (...args: unknown[]) => mockAddExpense(...args),
       addPinnedPlace: (...args: unknown[]) => mockAddPinnedPlace(...args),
     },
@@ -76,6 +78,19 @@ describe('TripContext', () => {
 describe('TripContext optimistic (API enabled)', () => {
   beforeEach(() => {
     apiEnabledRef.current = true;
+    mockCreateTrip.mockReset();
+    mockCreateTrip.mockImplementation((input: Record<string, unknown>) =>
+      Promise.resolve({
+        id: 'server-trip-id',
+        userId: 'u1',
+        name: input.name,
+        startDate: input.startDate,
+        endDate: input.endDate,
+        destination: input.destination ?? '',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }),
+    );
     mockAddExpense.mockReset();
     mockAddPinnedPlace.mockReset();
   });
