@@ -157,6 +157,27 @@ db.exec(`
     FOREIGN KEY (user_id) REFERENCES users(id)
   );
   CREATE INDEX IF NOT EXISTS idx_trip_members_user ON trip_members(user_id);
+
+  CREATE TABLE IF NOT EXISTS reminders (
+    id TEXT PRIMARY KEY,
+    trip_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    title TEXT NOT NULL,
+    remind_at TEXT NOT NULL,
+    fired INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (trip_id) REFERENCES trips(id) ON DELETE CASCADE
+  );
+  CREATE INDEX IF NOT EXISTS idx_reminders_user ON reminders(user_id);
+
+  CREATE TABLE IF NOT EXISTS invite_tokens (
+    token TEXT PRIMARY KEY,
+    trip_id TEXT NOT NULL,
+    role TEXT NOT NULL CHECK (role IN ('participant', 'viewer')),
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (trip_id) REFERENCES trips(id) ON DELETE CASCADE
+  );
+  CREATE INDEX IF NOT EXISTS idx_invite_tokens_trip ON invite_tokens(trip_id);
 `);
 
 // Migrations: add new columns to trips if missing

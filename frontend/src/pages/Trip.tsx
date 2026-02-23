@@ -5,13 +5,15 @@ import { useTripData } from '../context/TripContext';
 import DayMap, { type MapPoint } from '../components/DayMap';
 import LocationPickerMap from '../components/LocationPickerMap';
 import TripDocuments from '../components/TripDocuments';
+import TripSuggestions from '../components/TripSuggestions';
+import TripReminders from '../components/TripReminders';
 import { api, isApiEnabled, type TripMember } from '../api/client';
 import { exportFileNameFromTripName, getShareBaseOrigin } from './tripUtils';
 import { reverseGeocode } from '../utils/geocode';
-import { mapsSearchUrl, mapsNavigationUrl } from '../utils/maps';
+import { mapsSearchUrl, mapsNavigationUrl, mapsTransitUrl, happyCowUrl } from '../utils/maps';
 import type { Trip, Activity, Accommodation, Attraction, ShoppingItem, PinnedPlace, Flight } from '../types';
 
-/** Modal: list members, invite by email, change role, remove (owner only). */
+/** Modal: list members, invite by email or link, change role, remove (owner only). */
 function TripMembersModal({ tripId, onClose }: { tripId: string; onClose: () => void }) {
   const [members, setMembers] = useState<TripMember[]>([]);
   const [loading, setLoading] = useState(true);
@@ -19,6 +21,9 @@ function TripMembersModal({ tripId, onClose }: { tripId: string; onClose: () => 
   const [inviteRole, setInviteRole] = useState<'participant' | 'viewer'>('participant');
   const [inviteStatus, setInviteStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle');
   const [inviteError, setInviteError] = useState<string | null>(null);
+  const [inviteLinkRole, setInviteLinkRole] = useState<'participant' | 'viewer'>('participant');
+  const [inviteLink, setInviteLink] = useState<string | null>(null);
+  const [inviteLinkCopied, setInviteLinkCopied] = useState(false);
 
   useEffect(() => {
     api.getTripMembers(tripId).then((r) => { setMembers(r.members); setLoading(false); }).catch(() => setLoading(false));
@@ -39,6 +44,20 @@ function TripMembersModal({ tripId, onClose }: { tripId: string; onClose: () => 
     } catch (err) {
       setInviteStatus('error');
       setInviteError(err instanceof Error ? err.message : 'שגיאה');
+    }
+  };
+
+  const handleCreateInviteLink = async () => {
+    try {
+      const { token } = await api.createInviteToken(tripId, inviteLinkRole);
+      const baseOrigin = getShareBaseOrigin(window.location.hostname, window.location.host, window.location.origin);
+      const url = `${baseOrigin}/invite/${token}`;
+      setInviteLink(url);
+      await navigator.clipboard.writeText(url);
+      setInviteLinkCopied(true);
+      setTimeout(() => setInviteLinkCopied(false), 3000);
+    } catch {
+      setInviteError('שגיאה ביצירת קישור הזמנה');
     }
   };
 
@@ -122,6 +141,28 @@ function TripMembersModal({ tripId, onClose }: { tripId: string; onClose: () => 
               </div>
               {inviteError && <p style={{ color: 'var(--color-danger)', fontSize: '0.9em', margin: 0 }}>{inviteError}</p>}
             </form>
+            <hr style={{ margin: 'var(--space-md) 0', opacity: 0.3 }} />
+            <h3 style={{ fontSize: '1rem', margin: '0 0 var(--space-sm) 0' }}>או: צור קישור הזמנה (לשליחה בכל ערוץ)</h3>
+            <div style={{ display: 'flex', gap: 'var(--space-sm)', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+              <label>
+                <span style={{ display: 'block', fontSize: '0.85em', marginBottom: '2px' }}>תפקיד</span>
+                <select value={inviteLinkRole} onChange={(e) => setInviteLinkRole(e.target.value as 'participant' | 'viewer')}>
+                  <option value="participant">משתתף</option>
+                  <option value="viewer">צופה</option>
+                </select>
+              </label>
+              <button type="button" onClick={handleCreateInviteLink} className="btn btn-primary">צור קישור</button>
+            </div>
+            {inviteLink && (
+              <div style={{ marginTop: 'var(--space-sm)', display: 'flex', gap: 'var(--space-sm)', flexWrap: 'wrap', alignItems: 'center' }}>
+                <input type="text" readOnly value={inviteLink} style={{ flex: 1, minWidth: 0, fontSize: '0.85em' }} onClick={(e) => (e.target as HTMLInputElement).select()} />
+                <button type="button" onClick={() => { navigator.clipboard.writeText(inviteLink); setInviteLinkCopied(true); setTimeout(() => setInviteLinkCopied(false), 3000); }} className="btn btn-secondary">
+                  {inviteLinkCopied ? 'הועתק!' : 'העתק'}
+                </button>
+                <a href={`mailto:?subject=${encodeURIComponent('הזמנה לטיול')}&body=${encodeURIComponent(inviteLink)}`} className="btn btn-secondary" style={{ textDecoration: 'none' }}>מייל</a>
+                <a href={`https://wa.me/?text=${encodeURIComponent(inviteLink)}`} className="btn btn-secondary" style={{ textDecoration: 'none' }} target="_blank" rel="noopener noreferrer">וואטסאפ</a>
+              </div>
+            )}
           </>
         )}
         <p style={{ marginTop: 'var(--space-md)', marginBottom: 0 }}>
@@ -753,7 +794,11 @@ export default function Trip() {
                 <div style={{ marginTop: 'var(--space-xs)', display: 'flex', gap: 'var(--space-sm)', flexWrap: 'wrap' }}>
                   <a href="#trip-map" className="btn btn-ghost" style={{ fontSize: '0.85em', padding: '4px 8px' }}>ראה על המפה</a>
                   <a href={mapsNavigationUrl({ address: a.address, lat: a.lat, lng: a.lng })} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.85em', padding: '4px 8px' }}>פתח ניווט</a>
+                  <a href={mapsTransitUrl({ address: a.address, lat: a.lat, lng: a.lng })} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.85em', padding: '4px 8px' }}>תחבורה ציבורית</a>
                   <a href={mapsSearchUrl(a.address)} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.85em', padding: '4px 8px' }}>חיפוש במפות</a>
+                  {happyCowUrl({ lat: a.lat, lng: a.lng, address: a.address }) && (
+                    <a href={happyCowUrl({ lat: a.lat, lng: a.lng, address: a.address })!} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.85em', padding: '4px 8px' }}>מסעדות טבעוניות</a>
+                  )}
                 </div>
               )}
             </li>
@@ -832,9 +877,13 @@ export default function Trip() {
                 <><br /><small>ימים: {a.dayIndexes.join(', ')}</small></>
               )}
               {(a.address || (a.lat != null && a.lng != null)) && (
-                <p style={{ marginTop: 'var(--space-xs)', marginBottom: 0 }}>
-                  <a href={mapsNavigationUrl({ address: a.address ?? '', lat: a.lat, lng: a.lng })} target="_blank" rel="noopener noreferrer" style={{ marginLeft: 'var(--space-sm)' }}>פתח ניווט</a>
-                  <a href={a.address ? mapsSearchUrl(a.address) : `https://www.google.com/maps/search/?api=1&query=${a.lat},${a.lng}`} target="_blank" rel="noopener noreferrer" style={{ marginLeft: 'var(--space-sm)' }}>חיפוש במפות</a>
+                <p style={{ marginTop: 'var(--space-xs)', marginBottom: 0, display: 'flex', flexWrap: 'wrap', gap: 'var(--space-sm)' }}>
+                  <a href={mapsNavigationUrl({ address: a.address ?? '', lat: a.lat, lng: a.lng })} target="_blank" rel="noopener noreferrer">פתח ניווט</a>
+                  <a href={mapsTransitUrl({ address: a.address ?? '', lat: a.lat, lng: a.lng })} target="_blank" rel="noopener noreferrer">תחבורה ציבורית</a>
+                  <a href={a.address ? mapsSearchUrl(a.address) : `https://www.google.com/maps/search/?api=1&query=${a.lat},${a.lng}`} target="_blank" rel="noopener noreferrer">חיפוש במפות</a>
+                  {happyCowUrl({ lat: a.lat, lng: a.lng, address: a.address }) && (
+                    <a href={happyCowUrl({ lat: a.lat, lng: a.lng, address: a.address })!} target="_blank" rel="noopener noreferrer">מסעדות טבעוניות</a>
+                  )}
                 </p>
               )}
             </li>
@@ -886,6 +935,25 @@ export default function Trip() {
           </div>
         </form>
       ))}
+
+      {trip.destination && (
+        <section className="section-block">
+          <h2>הצעות חכמות</h2>
+          <TripSuggestions
+            destination={trip.destination}
+            onAddAttraction={(name, lat, lng) => {
+              addAttraction({
+                tripId: id,
+                name,
+                address: '',
+                dayIndexes: [],
+                lat,
+                lng,
+              });
+            }}
+          />
+        </section>
+      )}
 
       <h2 className="section-block">רשימות קניות</h2>
       <ul className="list-bare">
@@ -1023,6 +1091,11 @@ export default function Trip() {
         </form>
       )
       )}
+
+      <section className="section-block">
+        <h2>תזכורות</h2>
+        <TripReminders tripId={id} tripName={trip.name} />
+      </section>
 
       <section className="section-block">
         <TripDocuments tripId={id} />

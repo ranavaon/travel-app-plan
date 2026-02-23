@@ -368,6 +368,73 @@ app.delete('/api/trips/:id/members/:memberId', (req, res) => {
   res.status(204).send();
 });
 
+// --- Invite tokens (shareable invite links) ---
+app.post('/api/trips/:id/invite', (req, res) => {
+  const userId = getRequestUserId(req);
+  const tripId = req.params.id;
+  if (!canManageMembers(tripId, userId)) return res.status(403).json({ error: 'Only owner can create invite links' });
+  const role = req.body.role === 'viewer' ? 'viewer' : 'participant';
+  const token = genId() + genId();
+  const now = new Date().toISOString();
+  db.prepare('INSERT INTO invite_tokens (token, trip_id, role, created_at) VALUES (?, ?, ?, ?)').run(token, tripId, role, now);
+  res.status(201).json({ token, role });
+});
+
+app.get('/api/invite/:token', (req, res) => {
+  const row = db.prepare('SELECT token, trip_id, role FROM invite_tokens WHERE token = ?').get(req.params.token) as { token: string; trip_id: string; role: string } | undefined;
+  if (!row) return res.status(404).json({ error: 'Invite not found or expired' });
+  const trip = db.prepare('SELECT id, name, destination, start_date, end_date FROM trips WHERE id = ?').get(row.trip_id) as { id: string; name: string; destination?: string; start_date: string; end_date: string } | undefined;
+  if (!trip) return res.status(404).json({ error: 'Trip not found' });
+  res.json({ tripId: trip.id, tripName: trip.name, destination: trip.destination, startDate: trip.start_date, endDate: trip.end_date, role: row.role });
+});
+
+app.post('/api/invite/:token/accept', (req, res) => {
+  const userId = getRequestUserId(req);
+  const row = db.prepare('SELECT token, trip_id, role FROM invite_tokens WHERE token = ?').get(req.params.token) as { token: string; trip_id: string; role: string } | undefined;
+  if (!row) return res.status(404).json({ error: 'Invite not found or expired' });
+  const trip = db.prepare('SELECT user_id FROM trips WHERE id = ?').get(row.trip_id) as { user_id: string } | undefined;
+  if (!trip) return res.status(404).json({ error: 'Trip not found' });
+  if (trip.user_id === userId) return res.json({ ok: true, tripId: row.trip_id });
+  const existing = db.prepare('SELECT 1 FROM trip_members WHERE trip_id = ? AND user_id = ?').get(row.trip_id, userId);
+  if (existing) return res.json({ ok: true, tripId: row.trip_id });
+  const now = new Date().toISOString();
+  db.prepare('INSERT INTO trip_members (trip_id, user_id, role, created_at) VALUES (?, ?, ?, ?)').run(row.trip_id, userId, row.role, now);
+  res.json({ ok: true, tripId: row.trip_id });
+});
+
+// --- Reminders ---
+app.get('/api/reminders', (req, res) => {
+  const userId = getRequestUserId(req);
+  const rows = db.prepare('SELECT * FROM reminders WHERE user_id = ? ORDER BY remind_at').all(userId) as { id: string; trip_id: string; user_id: string; title: string; remind_at: string; fired: number; created_at: string }[];
+  res.json(rows.map((r) => ({ id: r.id, tripId: r.trip_id, title: r.title, remindAt: r.remind_at, fired: !!r.fired, createdAt: r.created_at })));
+});
+
+app.post('/api/trips/:tripId/reminders', (req, res) => {
+  const userId = getRequestUserId(req);
+  const tripId = req.params.tripId;
+  if (!getTripRole(tripId, userId)) return res.status(404).json({ error: 'Not found' });
+  const { title, remindAt } = req.body;
+  if (!title || !remindAt) return res.status(400).json({ error: 'title and remindAt required' });
+  const id = genId();
+  const now = new Date().toISOString();
+  db.prepare('INSERT INTO reminders (id, trip_id, user_id, title, remind_at, fired, created_at) VALUES (?, ?, ?, ?, ?, 0, ?)').run(id, tripId, userId, title, remindAt, now);
+  res.status(201).json({ id, tripId, title, remindAt, fired: false, createdAt: now });
+});
+
+app.patch('/api/reminders/:id/fire', (req, res) => {
+  const userId = getRequestUserId(req);
+  const r = db.prepare('UPDATE reminders SET fired = 1 WHERE id = ? AND user_id = ?').run(req.params.id, userId);
+  if (r.changes === 0) return res.status(404).json({ error: 'Not found' });
+  res.json({ ok: true });
+});
+
+app.delete('/api/reminders/:id', (req, res) => {
+  const userId = getRequestUserId(req);
+  const r = db.prepare('DELETE FROM reminders WHERE id = ? AND user_id = ?').run(req.params.id, userId);
+  if (r.changes === 0) return res.status(404).json({ error: 'Not found' });
+  res.status(204).send();
+});
+
 // --- Activities ---
 app.get('/api/trips/:tripId/activities', (req, res) => {
   const userId = getRequestUserId(req);

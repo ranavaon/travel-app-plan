@@ -11,6 +11,7 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ProfilePage from './pages/ProfilePage';
 import SharePage from './pages/SharePage';
+import InvitePage from './pages/InvitePage';
 import './App.css';
 
 /** When API is enabled, requires login; otherwise renders children. */
@@ -58,6 +59,7 @@ function AppContent() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/share/:token" element={<SharePage />} />
+          <Route path="/invite/:token" element={<InvitePage />} />
           <Route element={<ProtectedRoute />}>
             <Route path="/" element={<Home />} />
             <Route path="/profile" element={<ProfilePage />} />
