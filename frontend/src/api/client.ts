@@ -187,6 +187,15 @@ export const api = {
   acceptInvite: (token: string) =>
     fetchJson<{ ok: boolean; tripId: string }>(`/api/invite/${token}/accept`, { method: 'POST' }),
 
+  getReminders: () =>
+    fetchJson<{ id: string; tripId: string; title: string; remindAt: string; fired: boolean; createdAt: string }[]>('/api/reminders'),
+  createReminder: (tripId: string, body: { title: string; remindAt: string }) =>
+    fetchJson<{ id: string; tripId: string; title: string; remindAt: string; fired: boolean; createdAt: string }>(`/api/trips/${tripId}/reminders`, { method: 'POST', body: JSON.stringify(body) }),
+  fireReminder: (id: string) =>
+    fetchJson<{ ok: boolean }>(`/api/reminders/${id}/fire`, { method: 'PATCH' }),
+  deleteReminder: (id: string) =>
+    fetchJson<void>(`/api/reminders/${id}`, { method: 'DELETE' }),
+
   getFlights: (tripId: string) => fetchJson<NonNullable<ApiState['flights']>>(`/api/trips/${tripId}/flights`),
   createFlight: (tripId: string, body: Omit<import('../types').Flight, 'id'>) =>
     fetchJson<import('../types').Flight>(`/api/trips/${tripId}/flights`, { method: 'POST', body: JSON.stringify(body) }),

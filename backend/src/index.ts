@@ -402,6 +402,39 @@ app.post('/api/invite/:token/accept', (req, res) => {
   res.json({ ok: true, tripId: row.trip_id });
 });
 
+// --- Reminders ---
+app.get('/api/reminders', (req, res) => {
+  const userId = getRequestUserId(req);
+  const rows = db.prepare('SELECT * FROM reminders WHERE user_id = ? ORDER BY remind_at').all(userId) as { id: string; trip_id: string; user_id: string; title: string; remind_at: string; fired: number; created_at: string }[];
+  res.json(rows.map((r) => ({ id: r.id, tripId: r.trip_id, title: r.title, remindAt: r.remind_at, fired: !!r.fired, createdAt: r.created_at })));
+});
+
+app.post('/api/trips/:tripId/reminders', (req, res) => {
+  const userId = getRequestUserId(req);
+  const tripId = req.params.tripId;
+  if (!getTripRole(tripId, userId)) return res.status(404).json({ error: 'Not found' });
+  const { title, remindAt } = req.body;
+  if (!title || !remindAt) return res.status(400).json({ error: 'title and remindAt required' });
+  const id = genId();
+  const now = new Date().toISOString();
+  db.prepare('INSERT INTO reminders (id, trip_id, user_id, title, remind_at, fired, created_at) VALUES (?, ?, ?, ?, ?, 0, ?)').run(id, tripId, userId, title, remindAt, now);
+  res.status(201).json({ id, tripId, title, remindAt, fired: false, createdAt: now });
+});
+
+app.patch('/api/reminders/:id/fire', (req, res) => {
+  const userId = getRequestUserId(req);
+  const r = db.prepare('UPDATE reminders SET fired = 1 WHERE id = ? AND user_id = ?').run(req.params.id, userId);
+  if (r.changes === 0) return res.status(404).json({ error: 'Not found' });
+  res.json({ ok: true });
+});
+
+app.delete('/api/reminders/:id', (req, res) => {
+  const userId = getRequestUserId(req);
+  const r = db.prepare('DELETE FROM reminders WHERE id = ? AND user_id = ?').run(req.params.id, userId);
+  if (r.changes === 0) return res.status(404).json({ error: 'Not found' });
+  res.status(204).send();
+});
+
 // --- Activities ---
 app.get('/api/trips/:tripId/activities', (req, res) => {
   const userId = getRequestUserId(req);

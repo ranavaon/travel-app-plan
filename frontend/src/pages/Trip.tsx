@@ -6,6 +6,7 @@ import DayMap, { type MapPoint } from '../components/DayMap';
 import LocationPickerMap from '../components/LocationPickerMap';
 import TripDocuments from '../components/TripDocuments';
 import TripSuggestions from '../components/TripSuggestions';
+import TripReminders from '../components/TripReminders';
 import { api, isApiEnabled, type TripMember } from '../api/client';
 import { exportFileNameFromTripName, getShareBaseOrigin } from './tripUtils';
 import { reverseGeocode } from '../utils/geocode';
@@ -1090,6 +1091,11 @@ export default function Trip() {
         </form>
       )
       )}
+
+      <section className="section-block">
+        <h2>תזכורות</h2>
+        <TripReminders tripId={id} tripName={trip.name} />
+      </section>
 
       <section className="section-block">
         <TripDocuments tripId={id} />

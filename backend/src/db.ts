@@ -158,6 +158,18 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_trip_members_user ON trip_members(user_id);
 
+  CREATE TABLE IF NOT EXISTS reminders (
+    id TEXT PRIMARY KEY,
+    trip_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    title TEXT NOT NULL,
+    remind_at TEXT NOT NULL,
+    fired INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (trip_id) REFERENCES trips(id) ON DELETE CASCADE
+  );
+  CREATE INDEX IF NOT EXISTS idx_reminders_user ON reminders(user_id);
+
   CREATE TABLE IF NOT EXISTS invite_tokens (
     token TEXT PRIMARY KEY,
     trip_id TEXT NOT NULL,
