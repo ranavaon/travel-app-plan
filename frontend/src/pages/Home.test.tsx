@@ -1,15 +1,20 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { AuthProvider } from '../context/AuthContext';
 import { TripProvider } from '../context/TripContext';
 import Home from './Home';
+import { getTrips } from '../data/mockData';
+import { saveState } from '../data/persistence';
 
 function renderHome() {
   return render(
     <MemoryRouter>
-      <TripProvider>
-        <Home />
-      </TripProvider>
+      <AuthProvider>
+        <TripProvider>
+          <Home />
+        </TripProvider>
+      </AuthProvider>
     </MemoryRouter>,
   );
 }
@@ -31,8 +36,19 @@ describe('Home', () => {
   });
 
   it('does not show empty state when trips exist', async () => {
+    const mockTrips = getTrips();
+    saveState({
+      trips: mockTrips,
+      activities: [],
+      accommodations: [],
+      attractions: [],
+      shoppingItems: [],
+      documents: [],
+      expenses: [],
+      pinnedPlaces: [],
+    });
     renderHome();
-    await screen.findByText('טיול חדש', {}, { timeout: 3000 });
+    await screen.findAllByText('חופשה בתל אביב', {}, { timeout: 3000 });
     expect(screen.queryByText(/אין עדיין טיולים/)).not.toBeInTheDocument();
   });
 });

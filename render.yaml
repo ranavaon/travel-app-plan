@@ -1,0 +1,30 @@
+# Render Blueprint: single Web Service (API + frontend)
+# https://render.com/docs/blueprint-spec
+# After first deploy, set VITE_API_URL in Dashboard to your service URL (e.g. https://travel-app-plan.onrender.com)
+
+services:
+  - type: web
+    name: travel-app-plan
+    runtime: node
+    region: frankfurt
+    plan: free
+
+    buildCommand: |
+      cd frontend && npm ci && npm run build
+      && mkdir -p ../backend/public && cp -r dist/* ../backend/public
+      && cd ../backend && npm ci && npm run build
+
+    startCommand: cd backend && node dist/index.js
+
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      # Set VITE_API_URL in Render Dashboard after first deploy to your service URL (e.g. https://travel-app-plan.onrender.com)
+      # Then redeploy so the frontend build uses the correct API URL.
+      - key: VITE_API_URL
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      # Optional: SQLITE_PATH. Default writes to ./data.sqlite (ephemeral on free tier).

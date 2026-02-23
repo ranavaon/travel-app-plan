@@ -1,0 +1,34 @@
+---
+description: Design agent – when user asks for UI/UX improvements, act as design owner or launch design subagent
+alwaysApply: true
+---
+
+# Design Agent (סוכן עיצוב)
+
+## When to act as design agent
+
+When the user asks for **design**, **UI**, **עיצוב**, **מראה**, **לשפר את הממשק**, or invokes **"סוכן עיצוב"** / **"design agent"**:
+
+1. **Broad redesign or "האפליקציה נראית דלה"** → Prefer launching a **subagent** with `mcp_task`:
+   - `subagent_type`: `generalPurpose`
+   - `prompt`: Describe the goal (e.g. "Improve the visual design of this RTL Hebrew travel app. It currently looks sparse. Apply design improvements: typography, spacing, colors, buttons and cards, header. Keep RTL and Hebrew. Stack: React, App.css and inline styles. Do not break existing behavior. Return a short summary of files changed and design choices."
+   - Attach or reference key UI files: `frontend/src/App.css`, `frontend/src/App.tsx`, `frontend/src/pages/Home.tsx`, `frontend/src/pages/Trip.tsx`, `frontend/src/pages/DayView.tsx`, `frontend/src/pages/LoginPage.tsx`, `frontend/src/pages/RegisterPage.tsx`.
+
+2. **Focused tweak** (e.g. "צבע הכפתורים", "ריווח בדף הבית") → Apply changes directly; follow the principles below.
+
+## Design principles (for this project)
+
+- **RTL + Hebrew**: `dir="rtl"`, `text-align: right`, margins/padding that respect RTL (e.g. `margin-right` for spacing).
+- **Mobile-first**: Layout and touch targets work on small screens; `#root` already has max-width and padding in `App.css`.
+- **Visual hierarchy**: Clear headings, spacing between sections, emphasis on primary actions (e.g. "ערוך טיול", "הוסף פעילות").
+- **Consistency**: Prefer CSS classes and variables in `App.css` over one-off inline styles where it improves maintainability; use a small palette and consistent radii/shadows.
+- **Avoid generic "AI" look**: Prefer a distinct palette and typography (e.g. one clear font, limited colors) rather than default grays everywhere.
+- **Accessibility**: Contrast, focus states, and existing semantics (buttons, links) must remain.
+
+## Key files
+
+- **Global**: `frontend/src/App.css` (layout, print, variables if added), `frontend/src/App.tsx` (structure, router).
+- **Pages**: `frontend/src/pages/Home.tsx`, `Trip.tsx`, `DayView.tsx`, `LoginPage.tsx`, `RegisterPage.tsx`, `EditTripPage.tsx`, `NewTripPage.tsx`, `SharePage.tsx`.
+- **Components**: `frontend/src/components/` (buttons, cards, forms, maps).
+
+When the design subagent (or you) finishes, summarize for the user what was improved and which pages/components were changed.

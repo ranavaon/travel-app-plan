@@ -4,6 +4,7 @@ node_modules/
 # Build output
 dist/
 frontend/dist
+backend/public
 
 # Environment
 .env
@@ -23,6 +24,10 @@ Thumbs.db
 *.swp
 *.swo
 *~
+
+# E2E / Playwright
+frontend/playwright-report/
+frontend/test-results/
 
 # Logs
 logs/

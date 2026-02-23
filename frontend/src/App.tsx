@@ -27,12 +27,12 @@ function HeaderLinks() {
   const { currentUser, logout } = useAuth();
   if (!isApiEnabled()) return null;
   return (
-    <nav style={{ marginRight: 'auto', display: 'flex', gap: 12, alignItems: 'center' }}>
+    <nav className="nav-links">
       {currentUser ? (
         <>
           <Link to="/profile">פרופיל</Link>
-          <span style={{ fontSize: '0.9em', opacity: 0.9 }}>{currentUser.email}</span>
-          <button type="button" onClick={logout} style={{ padding: '4px 10px', cursor: 'pointer' }}>
+          <span className="user-email">{currentUser.email}</span>
+          <button type="button" onClick={logout} className="btn btn-ghost">
             התנתק
           </button>
         </>
@@ -49,7 +49,7 @@ function HeaderLinks() {
 function AppContent() {
   return (
     <>
-      <header style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <header className="app-header">
         <Link to="/">אפליקציית טיולים</Link>
         <HeaderLinks />
       </header>

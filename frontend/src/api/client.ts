@@ -74,6 +74,7 @@ export type SharedTripData = {
   accommodations: import('../types').Accommodation[];
   attractions: import('../types').Attraction[];
   shoppingItems: import('../types').ShoppingItem[];
+  flights?: import('../types').Flight[];
 };
 
 export type ApiState = {
@@ -85,9 +86,12 @@ export type ApiState = {
   documents: import('../types').Document[];
   expenses: import('../types').Expense[];
   pinnedPlaces: import('../types').PinnedPlace[];
+  flights?: import('../types').Flight[];
 };
 
 export type AuthUser = { id: string; email: string; name?: string };
+
+export type TripMember = { userId: string; email: string; name?: string; role: 'owner' | 'participant' | 'viewer' };
 
 export const api = {
   auth: {
@@ -121,6 +125,15 @@ export const api = {
     fetchJson<{ shareToken: string }>(`/api/trips/${tripId}/share`, { method: 'POST' }),
   getSharedTrip: (token: string) =>
     fetchJsonPublic<SharedTripData>(`/api/share/${token}`),
+
+  getTripMembers: (tripId: string) =>
+    fetchJson<{ members: TripMember[] }>(`/api/trips/${tripId}/members`),
+  inviteTripMember: (tripId: string, body: { email: string; role: 'participant' | 'viewer' }) =>
+    fetchJson<{ member: TripMember }>(`/api/trips/${tripId}/members`, { method: 'POST', body: JSON.stringify(body) }),
+  updateTripMemberRole: (tripId: string, memberId: string, role: 'participant' | 'viewer') =>
+    fetchJson<{ member: TripMember }>(`/api/trips/${tripId}/members/${memberId}`, { method: 'PATCH', body: JSON.stringify({ role }) }),
+  removeTripMember: (tripId: string, memberId: string) =>
+    fetchJson<void>(`/api/trips/${tripId}/members/${memberId}`, { method: 'DELETE' }),
 
   getActivities: (tripId: string) => fetchJson<ApiState['activities']>(`/api/trips/${tripId}/activities`),
   createActivity: (tripId: string, body: Omit<import('../types').Activity, 'id'>) =>
@@ -166,4 +179,11 @@ export const api = {
   addPinnedPlace: (tripId: string, body: { name: string; address?: string; lat?: number; lng?: number }) =>
     fetchJson<ApiState['pinnedPlaces'][0]>(`/api/trips/${tripId}/pinned-places`, { method: 'POST', body: JSON.stringify(body) }),
   deletePinnedPlace: (id: string) => fetchJson<void>(`/api/pinned-places/${id}`, { method: 'DELETE' }),
+
+  getFlights: (tripId: string) => fetchJson<NonNullable<ApiState['flights']>>(`/api/trips/${tripId}/flights`),
+  createFlight: (tripId: string, body: Omit<import('../types').Flight, 'id'>) =>
+    fetchJson<import('../types').Flight>(`/api/trips/${tripId}/flights`, { method: 'POST', body: JSON.stringify(body) }),
+  updateFlight: (id: string, body: Partial<Omit<import('../types').Flight, 'id' | 'tripId'>>) =>
+    fetchJson<import('../types').Flight>(`/api/flights/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+  deleteFlight: (id: string) => fetchJson<void>(`/api/flights/${id}`, { method: 'DELETE' }),
 };

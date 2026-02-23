@@ -10,6 +10,9 @@ export interface User {
   createdAt: string;
 }
 
+/** Current user's role on this trip (from API when using backend). */
+export type TripRole = 'owner' | 'participant' | 'viewer';
+
 export interface Trip {
   id: string;
   userId: string;
@@ -21,6 +24,8 @@ export interface Trip {
   updatedAt: string;
   tags?: string[];
   budget?: number;
+  /** Present when loaded from API: owner = full control; participant = can edit; viewer = read-only */
+  role?: TripRole;
   accommodations?: Accommodation[];
   attractions?: Attraction[];
   shoppingItems?: ShoppingItem[];
@@ -99,6 +104,25 @@ export interface ShoppingItem {
   done: boolean;
   order: number;
   category?: 'ציוד' | 'מסמכים' | 'כללי';
+}
+
+/** Optional flight info per trip (e.g. outbound/return). */
+export interface Flight {
+  id: string;
+  tripId: string;
+  flightNumber?: string;
+  airline?: string;
+  airportDeparture?: string;
+  airportArrival?: string;
+  departureDateTime?: string;
+  arrivalDateTime?: string;
+  gate?: string;
+  ticketUrl?: string;
+  ticketNotes?: string;
+  seat?: string;
+  cabinClass?: string;
+  durationMinutes?: number;
+  notes?: string;
 }
 
 export type DocumentType = 'passport' | 'visa' | 'insurance' | 'booking' | 'other';

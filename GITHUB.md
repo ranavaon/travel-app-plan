@@ -12,6 +12,24 @@ git push -u origin main
 
 ---
 
+## ענפים וזרימת עבודה
+
+- **main** – קוד יציב; מתעדכן רק דרך PR מ-`development`.
+- **development** – ענף פיתוח; כל תיקון באג וכל פיצ'ר נמזגים לכאן **רק** מענף נפרד ו-PR ל-`development`.
+- **חובה:** לכל באג – [Issue](https://github.com/ranavon/travel-app-plan/issues) + ענף `fix/...`; לכל פיצ'ר – Issue + ענף `feature/...`.
+- **תיעוד באגים ופתרונות:** [docs/BUGS_AND_FIXES.md](docs/BUGS_AND_FIXES.md)
+- **זרימת עבודה מפורטת:** [docs/WORKFLOW.md](docs/WORKFLOW.md)
+
+יצירת ענף `development` (פעם אחת):
+
+```bash
+git checkout main
+git checkout -b development
+git push -u origin development
+```
+
+---
+
 ## אם מתבקשים פרטי התחברות
 
 ### אופציה א': HTTPS עם Personal Access Token (מומלץ)

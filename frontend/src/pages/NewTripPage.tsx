@@ -35,53 +35,49 @@ export default function NewTripPage() {
   };
 
   return (
-    <div dir="rtl" style={{ textAlign: 'right', maxWidth: 480, margin: '0 auto', padding: 16 }}>
+    <div dir="rtl" className="page-wrap" style={{ maxWidth: 480 }}>
       <p>
         <Link to="/">דף בית</Link>
       </p>
       <h1>טיול חדש</h1>
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <div>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+        <div className="form-group">
           <label>שם הטיול *</label>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
-            style={{ display: 'block', width: '100%', marginTop: 4 }}
           />
         </div>
-        <div>
+        <div className="form-group">
           <label>תאריך התחלה *</label>
           <input
             type="date"
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
             required
-            style={{ display: 'block', width: '100%', marginTop: 4 }}
           />
         </div>
-        <div>
+        <div className="form-group">
           <label>תאריך סיום *</label>
           <input
             type="date"
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
             required
-            style={{ display: 'block', width: '100%', marginTop: 4 }}
           />
         </div>
-        <div>
+        <div className="form-group">
           <label>יעד (אופציונלי)</label>
           <input
             value={destination}
             onChange={(e) => setDestination(e.target.value)}
-            style={{ display: 'block', width: '100%', marginTop: 4 }}
           />
         </div>
-        {error && <p style={{ color: 'crimson', margin: 0 }}>{error}</p>}
-        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-          <button type="submit">צור טיול</button>
-          <button type="button" onClick={() => navigate('/')}>ביטול</button>
+        {error && <p style={{ color: 'var(--color-error)', margin: 0 }}>{error}</p>}
+        <div className="form-actions">
+          <button type="submit" className="btn btn-primary">צור טיול</button>
+          <button type="button" onClick={() => navigate('/')} className="btn btn-ghost">ביטול</button>
         </div>
       </form>
     </div>

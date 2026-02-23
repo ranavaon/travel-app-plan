@@ -5,10 +5,15 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
 export default defineConfig({
+  server: {
+    host: true, // allow LAN access (e.g. http://192.168.x.x:5173)
+  },
   test: {
     environment: 'jsdom',
     globals: false,
     setupFiles: ['src/test/setup.ts'],
+    include: ['src/**/*.test.{ts,tsx}', 'src/**/*.spec.{ts,tsx}'],
+    exclude: ['**/node_modules/**', '**/e2e/**'],
   },
   plugins: [
     react(),

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { api, type SharedTripData } from '../api/client';
+import type { Flight } from '../types';
 
 export default function SharePage() {
   const { token } = useParams<{ token: string }>();
@@ -16,7 +17,7 @@ export default function SharePage() {
 
   if (!token) {
     return (
-      <div dir="rtl" style={{ textAlign: 'right', padding: 16 }}>
+      <div dir="rtl" className="page-wrap">
         <p>קישור לא תקין</p>
         <Link to="/">דף בית</Link>
       </div>
@@ -25,7 +26,7 @@ export default function SharePage() {
 
   if (error) {
     return (
-      <div dir="rtl" style={{ textAlign: 'right', padding: 16 }}>
+      <div dir="rtl" className="page-wrap">
         <p>{error}</p>
         <Link to="/">דף בית</Link>
       </div>
@@ -34,34 +35,33 @@ export default function SharePage() {
 
   if (!data) {
     return (
-      <div dir="rtl" style={{ textAlign: 'right', padding: 16 }}>
+      <div dir="rtl" className="page-wrap">
         <p>טוען...</p>
       </div>
     );
   }
 
-  const { trip, days, activities, accommodations, attractions, shoppingItems } = data;
-  const sectionMargin = 20;
+  const { trip, days, activities, accommodations, attractions, shoppingItems, flights = [] } = data;
 
   return (
-    <div dir="rtl" style={{ textAlign: 'right', maxWidth: 720, margin: '0 auto', padding: 16 }}>
+    <div dir="rtl" className="page-wrap">
       <p>
         <Link to="/">דף בית</Link>
-        <span style={{ marginRight: 12, opacity: 0.8 }}>| צפייה ציבורית בטיול</span>
+        <span style={{ marginRight: 'var(--space-md)', opacity: 0.8 }}>| צפייה ציבורית בטיול</span>
       </p>
       <h1>{trip.name}</h1>
       {trip.destination && <p><strong>יעד:</strong> {trip.destination}</p>}
       <p><strong>תאריכים:</strong> {trip.startDate} – {trip.endDate}</p>
 
-      <h2 style={{ marginTop: sectionMargin }}>ימים</h2>
-      <ul style={{ listStyle: 'none', paddingRight: 0 }}>
+      <h2 className="section-block">ימים</h2>
+      <ul className="list-bare">
         {days.map((day) => {
           const dayActivities = activities.filter((a) => a.dayIndex === day.dayIndex);
           return (
-            <li key={day.dayIndex} style={{ marginBottom: 12 }}>
+            <li key={day.dayIndex} className="card" style={{ marginBottom: 'var(--space-sm)' }}>
               <strong>יום {day.dayIndex + 1} – {day.date}</strong>
               {dayActivities.length > 0 && (
-                <ul style={{ marginTop: 6, paddingRight: 20 }}>
+                <ul style={{ marginTop: 'var(--space-sm)', paddingRight: 'var(--space-lg)' }}>
                   {dayActivities.sort((a, b) => a.order - b.order).map((a) => (
                     <li key={a.id}>
                       {a.time && <span>{a.time} – </span>}
@@ -76,37 +76,53 @@ export default function SharePage() {
         })}
       </ul>
 
-      <h2 style={{ marginTop: sectionMargin }}>לינה</h2>
-      <ul style={{ listStyle: 'none', paddingRight: 0 }}>
+      <h2 className="section-block">טיסות</h2>
+      <ul className="list-bare">
+        {flights.map((f: Flight) => (
+          <li key={f.id} className="card">
+            {(f.airline || f.flightNumber) && <strong>{[f.airline, f.flightNumber].filter(Boolean).join(' ')}</strong>}
+            {(f.airportDeparture || f.airportArrival) && <><br /><span>{f.airportDeparture} → {f.airportArrival}</span></>}
+            {f.departureDateTime && <><br /><small>יציאה: {f.departureDateTime}</small></>}
+            {f.arrivalDateTime && <><br /><small>נחיתה: {f.arrivalDateTime}</small></>}
+            {f.gate && <><br /><small>גייט: {f.gate}</small></>}
+            {f.seat && <><br /><small>מושב: {f.seat}</small></>}
+            {f.ticketUrl && <><br /><a href={f.ticketUrl} target="_blank" rel="noopener noreferrer">קישור לכרטיס</a></>}
+          </li>
+        ))}
+        {flights.length === 0 && <li style={{ color: 'var(--color-text-muted)' }}><em>אין טיסות</em></li>}
+      </ul>
+
+      <h2 className="section-block">לינה</h2>
+      <ul className="list-bare">
         {accommodations.map((a) => (
-          <li key={a.id} style={{ marginBottom: 8 }}>
+          <li key={a.id} className="card">
             <strong>{a.name}</strong>
             {a.address && <><br /><small>{a.address}</small></>}
             <br />
             <small>כניסה: {a.checkInDate} | יציאה: {a.checkOutDate}</small>
           </li>
         ))}
-        {accommodations.length === 0 && <li><em>אין לינה</em></li>}
+        {accommodations.length === 0 && <li style={{ color: 'var(--color-text-muted)' }}><em>אין לינה</em></li>}
       </ul>
 
-      <h2 style={{ marginTop: sectionMargin }}>אטרקציות</h2>
-      <ul style={{ listStyle: 'none', paddingRight: 0 }}>
+      <h2 className="section-block">אטרקציות</h2>
+      <ul className="list-bare">
         {attractions.map((a) => (
-          <li key={a.id} style={{ marginBottom: 8 }}>
+          <li key={a.id} className="card">
             <strong>{a.name}</strong>
             {a.address && <><br /><small>{a.address}</small></>}
             {a.dayIndexes?.length > 0 && <><br /><small>ימים: {a.dayIndexes.join(', ')}</small></>}
           </li>
         ))}
-        {attractions.length === 0 && <li><em>אין אטרקציות</em></li>}
+        {attractions.length === 0 && <li style={{ color: 'var(--color-text-muted)' }}><em>אין אטרקציות</em></li>}
       </ul>
 
-      <h2 style={{ marginTop: sectionMargin }}>רשימת קניות</h2>
-      <ul style={{ listStyle: 'none', paddingRight: 0 }}>
+      <h2 className="section-block">רשימת קניות</h2>
+      <ul className="list-bare">
         {shoppingItems.map((item) => (
-          <li key={item.id} style={{ textDecoration: item.done ? 'line-through' : undefined }}>{item.text}</li>
+          <li key={item.id} className="card" style={{ textDecoration: item.done ? 'line-through' : undefined }}>{item.text}</li>
         ))}
-        {shoppingItems.length === 0 && <li><em>אין פריטים</em></li>}
+        {shoppingItems.length === 0 && <li style={{ color: 'var(--color-text-muted)' }}><em>אין פריטים</em></li>}
       </ul>
     </div>
   );
