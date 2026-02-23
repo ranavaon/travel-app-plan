@@ -424,11 +424,13 @@ app.post('/api/trips/:tripId/accommodations', (req, res) => {
   const userId = getRequestUserId(req);
   const tripId = req.params.tripId;
   if (!canEditTrip(tripId, userId)) return res.status(403).json({ error: 'Only owner or participant can edit' });
-  const { name, address, checkInDate, checkOutDate, notes, bookingUrl } = req.body;
+  const { name, address, checkInDate, checkOutDate, notes, bookingUrl, lat, lng } = req.body;
   const id = genId();
+  const latVal = lat != null && typeof lat === 'number' && !Number.isNaN(lat) ? lat : null;
+  const lngVal = lng != null && typeof lng === 'number' && !Number.isNaN(lng) ? lng : null;
   db.prepare(
-    'INSERT INTO accommodations (id, trip_id, name, address, check_in_date, check_out_date, notes, booking_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-  ).run(id, tripId, name, address ?? '', checkInDate, checkOutDate, notes ?? null, bookingUrl ?? null);
+    'INSERT INTO accommodations (id, trip_id, name, address, check_in_date, check_out_date, notes, booking_url, lat, lng) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+  ).run(id, tripId, name, address ?? '', checkInDate, checkOutDate, notes ?? null, bookingUrl ?? null, latVal, lngVal);
   res.status(201).json(toAccommodation(db.prepare('SELECT * FROM accommodations WHERE id = ?').get(id) as AccRow));
 });
 
@@ -439,9 +441,11 @@ app.put('/api/accommodations/:id', (req, res) => {
   if (!canEditTrip(row.trip_id, userId)) return res.status(403).json({ error: 'Only owner or participant can edit' });
   const r = row;
   const u = req.body;
+  const latVal = u.lat !== undefined ? (typeof u.lat === 'number' && !Number.isNaN(u.lat) ? u.lat : null) : r.lat;
+  const lngVal = u.lng !== undefined ? (typeof u.lng === 'number' && !Number.isNaN(u.lng) ? u.lng : null) : r.lng;
   db.prepare(
-    'UPDATE accommodations SET name = ?, address = ?, check_in_date = ?, check_out_date = ?, notes = ?, booking_url = ? WHERE id = ?'
-  ).run(u.name ?? r.name, u.address ?? r.address, u.checkInDate ?? r.check_in_date, u.checkOutDate ?? r.check_out_date, u.notes ?? r.notes, u.bookingUrl ?? r.booking_url, req.params.id);
+    'UPDATE accommodations SET name = ?, address = ?, check_in_date = ?, check_out_date = ?, notes = ?, booking_url = ?, lat = ?, lng = ? WHERE id = ?'
+  ).run(u.name ?? r.name, u.address ?? r.address, u.checkInDate ?? r.check_in_date, u.checkOutDate ?? r.check_out_date, u.notes ?? r.notes, u.bookingUrl ?? r.booking_url, latVal, lngVal, req.params.id);
   res.json(toAccommodation(db.prepare('SELECT * FROM accommodations WHERE id = ?').get(req.params.id) as AccRow));
 });
 

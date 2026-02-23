@@ -251,6 +251,10 @@ export default function Trip() {
   const [accAddress, setAccAddress] = useState('');
   const [accCheckIn, setAccCheckIn] = useState('');
   const [accCheckOut, setAccCheckOut] = useState('');
+  const [accLat, setAccLat] = useState<number | null>(null);
+  const [accLng, setAccLng] = useState<number | null>(null);
+  const [accGpsLoading, setAccGpsLoading] = useState(false);
+  const [accGpsError, setAccGpsError] = useState<string | null>(null);
   const [showAccForm, setShowAccForm] = useState(false);
 
   const [attrName, setAttrName] = useState('');
@@ -313,12 +317,51 @@ export default function Trip() {
       address: accAddress,
       checkInDate: accCheckIn,
       checkOutDate: accCheckOut,
+      ...(accLat != null && accLng != null ? { lat: accLat, lng: accLng } : {}),
     });
     setAccName('');
     setAccAddress('');
     setAccCheckIn('');
     setAccCheckOut('');
+    setAccLat(null);
+    setAccLng(null);
+    setAccGpsError(null);
     setShowAccForm(false);
+  };
+
+  const handleAccMapPoint = async (lat: number, lng: number) => {
+    setAccLat(lat);
+    setAccLng(lng);
+    setAccGpsError(null);
+    if (!accAddress.trim()) {
+      const addr = await reverseGeocode(lat, lng);
+      if (addr) setAccAddress(addr);
+    }
+  };
+
+  const handleAccGetCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setAccGpsError('הדפדפן לא תומך במיקום');
+      return;
+    }
+    setAccGpsError(null);
+    setAccGpsLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        setAccLat(lat);
+        setAccLng(lng);
+        setAccGpsLoading(false);
+        const addr = await reverseGeocode(lat, lng);
+        if (addr) setAccAddress(addr);
+      },
+      () => {
+        setAccGpsError('לא ניתן לקבל מיקום');
+        setAccGpsLoading(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+    );
   };
 
   const handleAddAttraction = (e: React.FormEvent) => {
@@ -738,6 +781,20 @@ export default function Trip() {
             />
           </div>
           <div className="form-group">
+            <label>מיקום על המפה</label>
+            <p style={{ fontSize: '0.9em', color: 'var(--color-text-muted)', margin: '0 0 var(--space-xs) 0' }}>לחיצה על המפה לקביעת מיקום הלינה</p>
+            <LocationPickerMap
+              onPoint={handleAccMapPoint}
+              selectedLat={accLat}
+              selectedLng={accLng}
+              height={220}
+            />
+            <button type="button" onClick={handleAccGetCurrentLocation} className="btn btn-ghost" style={{ marginTop: 'var(--space-xs)' }} disabled={accGpsLoading}>
+              {accGpsLoading ? 'מקבל מיקום...' : 'מיקום נוכחי'}
+            </button>
+            {accGpsError && <p style={{ color: 'var(--color-error)', fontSize: '0.85em', margin: 'var(--space-xs) 0 0 0' }}>{accGpsError}</p>}
+          </div>
+          <div className="form-group">
             <label>תאריך כניסה:</label>
             <input
               type="date"
@@ -757,7 +814,7 @@ export default function Trip() {
           </div>
           <div className="form-actions">
             <button type="submit" className="btn btn-primary">שמור לינה</button>
-            <button type="button" onClick={() => setShowAccForm(false)} className="btn btn-ghost">ביטול</button>
+            <button type="button" onClick={() => { setShowAccForm(false); setAccLat(null); setAccLng(null); setAccGpsError(null); }} className="btn btn-ghost">ביטול</button>
           </div>
         </form>
       ))}
