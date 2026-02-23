@@ -1,128 +1,229 @@
-# אפליקציית טיולים – Travel App
+# Travel App — אפליקציית תכנון טיולים
 
-תכנון ופיתוח לפי [PLANNING.md](./PLANNING.md).
+A full-stack Hebrew (RTL) travel planning app. Plan trips day-by-day, manage accommodations, attractions, flights, expenses, shopping lists, documents, and more — all from your browser or phone.
 
-## שלב 1 – פרונט אנד (React + TypeScript)
-
-זהו **שלב 1** של האפליקציה: שלד הפרונט עם Vite, React, TypeScript ו־React Router.
-
-### הרצת הפרויקט
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-אחרי ההרצה, פתח בדפדפן את הכתובת שמופיעה (בדרך כלל `http://localhost:5173`).
-
-### מבנה הפרויקט
-
-- **frontend/** – אפליקציית React (Vite)
-  - `src/types/` – טיפוסי TypeScript (Trip, Day, Activity, Accommodation, Attraction, ShoppingItem)
-  - `src/pages/` – דפים: Home (רשימת טיולים), Trip (טיול בודד), DayView (מבט יום)
-  - `src/components/` – קומפוננטות לשימוש חוזר
-  - `src/api/` – קריאות API (להמשך)
-
-### נתיבים (Routes)
-
-- `/` – דף בית (הטיולים שלי)
-- `/trip/:id` – תצוגת טיול בודד
-- `/trip/:id/day/:dayIndex` – מבט יום בטיול
-- `/register` – הרשמה
-- `/login` – התחברות
-
-### העלאה (Deployment)
-
-הפרונט בנוי כ־SPA עם ניתוב בצד הלקוח; יש להגדיר fallback ל־`index.html` לכל הנתיבים.
-
-**Vercel**
-
-1. חבר את הריפו ל־[Vercel](https://vercel.com).
-2. בהגדרות הפרויקט: **Root Directory** = `frontend`.
-3. Build Command: `npm run build`, Output Directory: `dist` (ברירת מחדל ל־Vite).
-4. קובץ `frontend/vercel.json` מגדיר כבר rewrites כך שכל הנתיבים מפנים ל־`index.html`.
-
-**Netlify**
-
-- צור `netlify.toml` בשורש הפרויקט עם:
-  - `build.command` = `cd frontend && npm run build`
-  - `publish` = `frontend/dist`
-  - הוסף redirect לכל הנתיבים ל־`/index.html` (למשל `/* /index.html 200`).
-- חבר את הריפו ל־Netlify והעלה.
-
-**העלאה ידנית:** הרץ `npm run build` מתוך `frontend/`, העלה את תוכן התיקייה `frontend/dist` לשרת סטטי והגדר fallback ל־`index.html` לכל נתיב.
+**Stack:** React + TypeScript + Vite (frontend) | Express + SQLite (backend) | PWA with offline support
 
 ---
 
-## שלב 2 – Backend ו־API
+## Quick Start
 
-נוסף שרת API ב־**backend/** (Node.js + Express + TypeScript + SQLite).
+### Prerequisites
 
-### הרצת Backend
+- **Node.js** 18+ and **npm**
+
+### 1. Clone and install
+
+```bash
+git clone https://github.com/ranavaon/travel-app-plan.git
+cd travel-app-plan
+```
+
+```bash
+# Install both frontend and backend
+cd backend && npm install && cd ..
+cd frontend && npm install && cd ..
+```
+
+### 2. Start the backend
 
 ```bash
 cd backend
-npm install
 npm run build
 npm start
 ```
 
-(השרת על פורט 3001.)
+The API server runs on **http://localhost:3001**. A SQLite database (`data.sqlite`) is created automatically.
 
-### חיבור הפרונט ל־Backend
+### 3. Start the frontend
 
-צור קובץ `frontend/.env` עם:
+Open a new terminal:
 
+```bash
+cd frontend
+echo "VITE_API_URL=http://localhost:3001" > .env
+npm run dev
 ```
-VITE_API_URL=http://localhost:3001
-```
 
-הרץ את הפרונט (`npm run dev` מתוך `frontend/`). כאשר המשתנה מוגדר, האפליקציה תשתמש ב-API במקום ב-localStorage.
+Open **http://localhost:5173** in your browser.
 
-פרטים נוספים: [backend/README.md](./backend/README.md).
+### 4. Create an account
 
-### הרצת המערכת המלאה
-
-כדי להריץ את המערכת עם Backend ו־Frontend יחד:
-
-1. **Backend** – הרץ את השרת:
-   ```bash
-   cd backend && npm run build && npm start
-   ```
-2. **Frontend** – צור קובץ `frontend/.env` עם:
-   ```
-   VITE_API_URL=http://localhost:3001
-   ```
-   ואז הרץ את הפרונט:
-   ```bash
-   cd frontend && npm run dev
-   ```
-
-כאשר ה־API פעיל, נדרשת **התחברות**: יש להירשם קודם בנתיב `/register`, ואז להתחבר ב־`/login`.  
-אפשר גם **התחברות עם Google או Apple** – להגדרה ראו [OAUTH_SETUP.md](./OAUTH_SETUP.md).
-
-### משתני סביבה
-
-- **פרונט:** `VITE_API_URL` – כתובת ה־API (למשל `http://localhost:3001` בפיתוח).
-- **Backend:** רשימה מלאה והסבר ב־[backend/README.md](./backend/README.md) ובקובץ [backend/.env.example](./backend/.env.example). בין היתר:
-  - `JWT_SECRET` – סוד לחתימת JWT (חובה בפרודקשן)
-  - `GOOGLE_CLIENT_ID` – (אופציונלי) להתחברות עם Google
-  - `APPLE_CLIENT_ID` – (אופציונלי) ל־Sign in with Apple  
-  להגדרת OAuth (Google/Apple) ראו [OAUTH_SETUP.md](./OAUTH_SETUP.md).
+Go to `/register` to create an account, then log in at `/login`. You're ready to plan your first trip.
 
 ---
 
-## פריסה (Production)
+## Offline Mode (no backend)
 
-- **Frontend** – בהעלאה לפרודקשן יש להגדיר **`VITE_API_URL`** לכתובת ה־API הפרודה (למשל `https://your-backend-url.com`). בנה עם המשתנה הזה — לדוגמה:
-  ```
-  VITE_API_URL=https://your-backend-url.com
-  ```
-  הרץ `npm run build` מתוך `frontend/` (או השתמש ב־build של Netlify/Vercel עם המשתנה בהגדרות הפרויקט). האפליקציה הבנויה תפנה ל־Backend הפרוס.
-- **Backend** – ניתן להריץ עם Docker (קיים `Dockerfile` בתיקיית `backend/`). הוראות פריסה מפורטות (Railway, Render, Docker ועוד) ב־[backend/README.md](./backend/README.md).
-- **CORS** – יש להגדיר ב־Backend שה־origin של הפרונט הפרוס מורשה (CORS מאפשר את כתובת הפרונט).
+The app also works **without a backend**. If `VITE_API_URL` is not set, data is stored locally in the browser (localStorage). This is useful for quick demos or offline use.
+
+```bash
+cd frontend
+npm run dev   # no .env file needed
+```
 
 ---
 
-בשלבים הבאים: אימות משתמשים (הרשמה/התחברות), אירוח Backend.
+## Features
+
+| Feature | Description |
+|---------|-------------|
+| **Trips** | Create, edit, delete trips with dates, destination, tags, and budget |
+| **Day-by-day view** | Each trip auto-generates days; drag-and-drop to reorder activities |
+| **Accommodations** | Track lodging with dates, address, and map location |
+| **Attractions** | Save attractions linked to specific days |
+| **Flights** | Store flight details (airline, times, gate, seat, ticket link) |
+| **Shopping lists** | Checklist items with done/undone toggle |
+| **Budget tracking** | Set a planned budget, log expenses, see remaining/overspent |
+| **Documents** | Upload and view travel documents (passport, visa, insurance, etc.) |
+| **Pinned places** | Save locations you discover while traveling, assign them later |
+| **Maps** | Interactive Leaflet map showing all trip locations; navigation links |
+| **Navigation links** | One-tap Google Maps navigation, public transit, and search |
+| **Happy Cow** | Quick link to find vegan/kosher restaurants near any location |
+| **Smart suggestions** | Auto-suggested attractions from OpenTripMap based on trip destination |
+| **Reminders** | Set date/time reminders with browser notifications |
+| **Sharing** | Read-only share links; invite members with roles (participant/viewer) |
+| **Export** | Export trip as TXT or PDF |
+| **PWA & Offline** | Install to home screen; view and edit trips offline with sync queue |
+| **Auth** | Email/password, Google Sign-In, Apple Sign-In |
+| **Filters** | Filter trips by future/past and by tags |
+
+---
+
+## Project Structure
+
+```
+travel-app-plan/
+├── frontend/               # React + Vite + TypeScript
+│   ├── src/
+│   │   ├── pages/          # Home, Trip, DayView, NewTrip, EditTrip, Login, Register, ...
+│   │   ├── components/     # Reusable: DayMap, LocationPickerMap, TripDocuments, TripReminders, ...
+│   │   ├── context/        # TripContext (state), AuthContext (auth)
+│   │   ├── api/            # API client (fetch wrapper)
+│   │   ├── types/          # TypeScript interfaces
+│   │   ├── utils/          # Map URLs, geocoding helpers
+│   │   └── schemas/        # Zod validation schemas
+│   └── public/             # PWA manifest, icons
+│
+├── backend/                # Express + SQLite + TypeScript
+│   ├── src/
+│   │   ├── index.ts        # Route definitions (auth, trips, activities, etc.)
+│   │   ├── db.ts           # Database schema and migrations
+│   │   ├── auth.ts         # JWT, user lookup helpers
+│   │   ├── models.ts       # Row types and DB-to-API converters
+│   │   └── helpers.ts      # Shared utilities (genId, role checks, etc.)
+│   └── test/               # Vitest API tests
+│
+├── docs/                   # Deployment, workflow, and network docs
+└── PLANNING.md             # Full feature spec and implementation status
+```
+
+---
+
+## Routes (Pages)
+
+| Path | Page |
+|------|------|
+| `/` | Home — list of all trips, filters |
+| `/trip/new` | Create a new trip |
+| `/trip/:id` | Trip detail — days, map, flights, accommodations, attractions, lists, expenses, documents |
+| `/trip/:id/edit` | Edit trip details |
+| `/trip/:id/day/:dayIndex` | Day view — activities, drag-and-drop, map |
+| `/login` | Login |
+| `/register` | Register |
+| `/profile` | User profile |
+| `/share/:token` | Read-only shared trip view |
+| `/invite/:token` | Accept trip invitation |
+
+---
+
+## Environment Variables
+
+### Frontend (`frontend/.env`)
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `VITE_API_URL` | No | Backend URL (e.g. `http://localhost:3001`). If omitted, app uses localStorage. |
+| `VITE_GOOGLE_CLIENT_ID` | No | Google OAuth client ID for Sign-In button |
+| `VITE_APPLE_CLIENT_ID` | No | Apple Sign-In service ID |
+
+### Backend (`backend/.env`)
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `PORT` | No | `3001` | Server port |
+| `SQLITE_PATH` | No | `./data.sqlite` | Path to SQLite database file |
+| `JWT_SECRET` | **Yes (prod)** | `dev-secret-...` | Secret for signing JWT tokens |
+| `GOOGLE_CLIENT_ID` | No | — | Enable Google Sign-In |
+| `APPLE_CLIENT_ID` | No | — | Enable Apple Sign-In |
+
+Copy `backend/.env.example` to `backend/.env` and fill in values for production.
+
+---
+
+## Running Tests
+
+```bash
+# Backend tests (Vitest + Supertest)
+cd backend && npm test
+
+# Frontend tests (Vitest + React Testing Library)
+cd frontend && npm test
+
+# End-to-end tests (Playwright)
+cd frontend && npx playwright install && npm run e2e
+```
+
+---
+
+## Deployment
+
+### Option 1: Render.com (recommended)
+
+A `render.yaml` blueprint is included. It builds both frontend and backend as a single service.
+
+1. Connect the repo to [Render](https://render.com)
+2. Use the blueprint file (`render.yaml`)
+3. Set `JWT_SECRET` in environment variables
+
+See [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) for details.
+
+### Option 2: Separate hosting
+
+**Backend** — deploy `backend/` to any Node.js host (Railway, Fly.io, VPS with Docker):
+
+```bash
+cd backend
+npm run build
+NODE_ENV=production JWT_SECRET=your-secret npm start
+```
+
+A `Dockerfile` is included in `backend/`.
+
+**Frontend** — build and deploy as static files:
+
+```bash
+cd frontend
+VITE_API_URL=https://your-backend-url.com npm run build
+```
+
+Deploy the `frontend/dist/` folder to any static host (Vercel, Netlify, Cloudflare Pages). Make sure all routes fall back to `index.html` (SPA routing).
+
+---
+
+## Development Workflow
+
+- **Main branch:** `main` (stable releases)
+- **Development branch:** `development` (integration)
+- **Feature branches:** `feature/xyz` branched from `development`
+- **Bug fixes:** `fix/xyz` branched from `development`
+
+Each feature/fix gets a PR to `development`. After testing, `development` is merged to `main`.
+
+See [docs/WORKFLOW.md](./docs/WORKFLOW.md) for full details.
+
+---
+
+## License
+
+Private project.
