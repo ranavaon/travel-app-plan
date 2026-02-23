@@ -11,7 +11,7 @@ import { reverseGeocode } from '../utils/geocode';
 import { mapsSearchUrl, mapsNavigationUrl, mapsTransitUrl, happyCowUrl } from '../utils/maps';
 import type { Trip, Activity, Accommodation, Attraction, ShoppingItem, PinnedPlace, Flight } from '../types';
 
-/** Modal: list members, invite by email, change role, remove (owner only). */
+/** Modal: list members, invite by email or link, change role, remove (owner only). */
 function TripMembersModal({ tripId, onClose }: { tripId: string; onClose: () => void }) {
   const [members, setMembers] = useState<TripMember[]>([]);
   const [loading, setLoading] = useState(true);
@@ -19,6 +19,9 @@ function TripMembersModal({ tripId, onClose }: { tripId: string; onClose: () => 
   const [inviteRole, setInviteRole] = useState<'participant' | 'viewer'>('participant');
   const [inviteStatus, setInviteStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle');
   const [inviteError, setInviteError] = useState<string | null>(null);
+  const [inviteLinkRole, setInviteLinkRole] = useState<'participant' | 'viewer'>('participant');
+  const [inviteLink, setInviteLink] = useState<string | null>(null);
+  const [inviteLinkCopied, setInviteLinkCopied] = useState(false);
 
   useEffect(() => {
     api.getTripMembers(tripId).then((r) => { setMembers(r.members); setLoading(false); }).catch(() => setLoading(false));
@@ -39,6 +42,20 @@ function TripMembersModal({ tripId, onClose }: { tripId: string; onClose: () => 
     } catch (err) {
       setInviteStatus('error');
       setInviteError(err instanceof Error ? err.message : 'שגיאה');
+    }
+  };
+
+  const handleCreateInviteLink = async () => {
+    try {
+      const { token } = await api.createInviteToken(tripId, inviteLinkRole);
+      const baseOrigin = getShareBaseOrigin(window.location.hostname, window.location.host, window.location.origin);
+      const url = `${baseOrigin}/invite/${token}`;
+      setInviteLink(url);
+      await navigator.clipboard.writeText(url);
+      setInviteLinkCopied(true);
+      setTimeout(() => setInviteLinkCopied(false), 3000);
+    } catch {
+      setInviteError('שגיאה ביצירת קישור הזמנה');
     }
   };
 
@@ -122,6 +139,28 @@ function TripMembersModal({ tripId, onClose }: { tripId: string; onClose: () => 
               </div>
               {inviteError && <p style={{ color: 'var(--color-danger)', fontSize: '0.9em', margin: 0 }}>{inviteError}</p>}
             </form>
+            <hr style={{ margin: 'var(--space-md) 0', opacity: 0.3 }} />
+            <h3 style={{ fontSize: '1rem', margin: '0 0 var(--space-sm) 0' }}>או: צור קישור הזמנה (לשליחה בכל ערוץ)</h3>
+            <div style={{ display: 'flex', gap: 'var(--space-sm)', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+              <label>
+                <span style={{ display: 'block', fontSize: '0.85em', marginBottom: '2px' }}>תפקיד</span>
+                <select value={inviteLinkRole} onChange={(e) => setInviteLinkRole(e.target.value as 'participant' | 'viewer')}>
+                  <option value="participant">משתתף</option>
+                  <option value="viewer">צופה</option>
+                </select>
+              </label>
+              <button type="button" onClick={handleCreateInviteLink} className="btn btn-primary">צור קישור</button>
+            </div>
+            {inviteLink && (
+              <div style={{ marginTop: 'var(--space-sm)', display: 'flex', gap: 'var(--space-sm)', flexWrap: 'wrap', alignItems: 'center' }}>
+                <input type="text" readOnly value={inviteLink} style={{ flex: 1, minWidth: 0, fontSize: '0.85em' }} onClick={(e) => (e.target as HTMLInputElement).select()} />
+                <button type="button" onClick={() => { navigator.clipboard.writeText(inviteLink); setInviteLinkCopied(true); setTimeout(() => setInviteLinkCopied(false), 3000); }} className="btn btn-secondary">
+                  {inviteLinkCopied ? 'הועתק!' : 'העתק'}
+                </button>
+                <a href={`mailto:?subject=${encodeURIComponent('הזמנה לטיול')}&body=${encodeURIComponent(inviteLink)}`} className="btn btn-secondary" style={{ textDecoration: 'none' }}>מייל</a>
+                <a href={`https://wa.me/?text=${encodeURIComponent(inviteLink)}`} className="btn btn-secondary" style={{ textDecoration: 'none' }} target="_blank" rel="noopener noreferrer">וואטסאפ</a>
+              </div>
+            )}
           </>
         )}
         <p style={{ marginTop: 'var(--space-md)', marginBottom: 0 }}>

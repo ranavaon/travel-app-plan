@@ -180,6 +180,13 @@ export const api = {
     fetchJson<ApiState['pinnedPlaces'][0]>(`/api/trips/${tripId}/pinned-places`, { method: 'POST', body: JSON.stringify(body) }),
   deletePinnedPlace: (id: string) => fetchJson<void>(`/api/pinned-places/${id}`, { method: 'DELETE' }),
 
+  createInviteToken: (tripId: string, role: 'participant' | 'viewer') =>
+    fetchJson<{ token: string; role: string }>(`/api/trips/${tripId}/invite`, { method: 'POST', body: JSON.stringify({ role }) }),
+  getInviteInfo: (token: string) =>
+    fetchJsonPublic<{ tripId: string; tripName: string; destination?: string; startDate: string; endDate: string; role: string }>(`/api/invite/${token}`),
+  acceptInvite: (token: string) =>
+    fetchJson<{ ok: boolean; tripId: string }>(`/api/invite/${token}/accept`, { method: 'POST' }),
+
   getFlights: (tripId: string) => fetchJson<NonNullable<ApiState['flights']>>(`/api/trips/${tripId}/flights`),
   createFlight: (tripId: string, body: Omit<import('../types').Flight, 'id'>) =>
     fetchJson<import('../types').Flight>(`/api/trips/${tripId}/flights`, { method: 'POST', body: JSON.stringify(body) }),
