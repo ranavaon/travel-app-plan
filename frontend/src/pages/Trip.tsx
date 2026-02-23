@@ -5,6 +5,7 @@ import { useTripData } from '../context/TripContext';
 import DayMap, { type MapPoint } from '../components/DayMap';
 import LocationPickerMap from '../components/LocationPickerMap';
 import TripDocuments from '../components/TripDocuments';
+import TripSuggestions from '../components/TripSuggestions';
 import { api, isApiEnabled, type TripMember } from '../api/client';
 import { exportFileNameFromTripName, getShareBaseOrigin } from './tripUtils';
 import { reverseGeocode } from '../utils/geocode';
@@ -933,6 +934,25 @@ export default function Trip() {
           </div>
         </form>
       ))}
+
+      {trip.destination && (
+        <section className="section-block">
+          <h2>הצעות חכמות</h2>
+          <TripSuggestions
+            destination={trip.destination}
+            onAddAttraction={(name, lat, lng) => {
+              addAttraction({
+                tripId: id,
+                name,
+                address: '',
+                dayIndexes: [],
+                lat,
+                lng,
+              });
+            }}
+          />
+        </section>
+      )}
 
       <h2 className="section-block">רשימות קניות</h2>
       <ul className="list-bare">
