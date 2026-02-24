@@ -2,6 +2,7 @@ import { Routes, Route, Link, Navigate, useLocation, Outlet } from 'react-router
 import { TripProvider } from './context/TripContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { isApiEnabled } from './api/client';
+import ErrorBoundary from './components/ErrorBoundary';
 import Home from './pages/Home';
 import Trip from './pages/Trip';
 import DayView from './pages/DayView';
@@ -76,11 +77,13 @@ function AppContent() {
 
 function App() {
   return (
-    <AuthProvider>
-      <TripProvider>
-        <AppContent />
-      </TripProvider>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <TripProvider>
+          <AppContent />
+        </TripProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
 

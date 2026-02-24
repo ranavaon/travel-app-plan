@@ -27,6 +27,7 @@ export default function DayView() {
   const { id, dayIndex: dayIndexParam } = useParams<{ id: string; dayIndex: string }>();
   const dayIndex = dayIndexParam != null ? parseInt(dayIndexParam, 10) : NaN;
   const {
+    loadingState,
     getTrip,
     getDays,
     getActivitiesForDay,
@@ -77,11 +78,21 @@ export default function DayView() {
     );
   }
 
-  if (!trip) {
+  if (!trip && loadingState === 'done') {
     return (
       <div dir="rtl" className="page-wrap">
         <p>הטיול לא נמצא</p>
         <Link to="/">דף בית</Link>
+      </div>
+    );
+  }
+
+  if (!trip) {
+    return (
+      <div dir="rtl" className="page-wrap">
+        <h1>טוען...</h1>
+        <div className="skeleton" style={{ height: 80, borderRadius: 'var(--radius-lg)', marginBottom: 'var(--space-md)' }} />
+        <div className="skeleton" style={{ height: 200, borderRadius: 'var(--radius-lg)' }} />
       </div>
     );
   }

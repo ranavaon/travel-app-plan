@@ -18,6 +18,7 @@ export default function Trip() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const {
+    loadingState,
     getTrip, getDays,
     getAccommodationsForTrip, getAttractionsForTrip, getActivitiesForTrip,
     addAccommodation, addAttraction,
@@ -101,11 +102,21 @@ export default function Trip() {
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [showMembersModal, setShowMembersModal] = useState(false);
 
-  if (!id || !trip) {
+  if (!id || (!trip && loadingState === 'done')) {
     return (
       <div dir="rtl" className="page-wrap">
         <p>טיול לא נמצא</p>
         <Link to="/">דף בית</Link>
+      </div>
+    );
+  }
+
+  if (!trip) {
+    return (
+      <div dir="rtl" className="page-wrap">
+        <h1>טוען טיול...</h1>
+        <div className="skeleton" style={{ height: 120, borderRadius: 'var(--radius-lg)', marginBottom: 'var(--space-md)' }} />
+        <div className="skeleton" style={{ height: 200, borderRadius: 'var(--radius-lg)' }} />
       </div>
     );
   }
