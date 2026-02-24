@@ -4,7 +4,7 @@ import { useTripData } from '../context/TripContext';
 
 export default function EditTripPage() {
   const { id } = useParams<{ id: string }>();
-  const { getTrip, updateTrip } = useTripData();
+  const { loadingState, getTrip, updateTrip } = useTripData();
   const navigate = useNavigate();
   const trip = id ? getTrip(id) : undefined;
 
@@ -15,11 +15,20 @@ export default function EditTripPage() {
   const [tagsStr, setTagsStr] = useState((trip?.tags ?? []).join(', '));
   const [budget, setBudget] = useState(trip?.budget ?? '');
 
-  if (!trip) {
+  if (!trip && loadingState === 'done') {
     return (
       <div dir="rtl" className="page-wrap">
         <p>טיול לא נמצא.</p>
         <Link to="/">חזרה לרשימת הטיולים</Link>
+      </div>
+    );
+  }
+
+  if (!trip) {
+    return (
+      <div dir="rtl" className="page-wrap">
+        <h1>טוען...</h1>
+        <div className="skeleton" style={{ height: 300, borderRadius: 'var(--radius-lg)' }} />
       </div>
     );
   }
