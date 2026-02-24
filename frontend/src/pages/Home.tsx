@@ -91,42 +91,36 @@ export default function Home() {
         </div>
       )}
 
-      <ul className="list-bare" style={{ marginTop: 'var(--space-md)' }}>
-        {trips.length === 0 ? (
-          <li key="empty" className="empty-state">
-            {allTrips.length === 0 ? (
-              <>
-                <p className="empty-title">אין עדיין טיולים</p>
-                <p className="empty-desc">תתחיל לתכנן את הטיול הבא שלך</p>
-                <Link to="/trip/new" className="btn btn-primary" style={{ textDecoration: 'none' }}>צור טיול ראשון</Link>
-              </>
-            ) : (
-              <p style={{ margin: 0, color: 'var(--color-text-muted)' }}>אין טיולים בעקבות הסינון</p>
-            )}
-          </li>
-        ) : (
-          trips.map((trip) => (
-            <li key={trip.id}>
-              <Link to={`/trip/${trip.id}`} className="card" style={{ display: 'block', textDecoration: 'none', color: 'inherit' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 'var(--space-sm)' }}>
-                  <div>
-                    <strong style={{ fontSize: '1.05em', color: 'var(--color-text)' }}>{trip.name}</strong>
-                    {trip.destination && <><br /><small style={{ color: 'var(--color-text-muted)' }}>{trip.destination}</small></>}
-                  </div>
-                  <small style={{ color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>{trip.startDate} – {trip.endDate}</small>
-                </div>
-                {(trip.tags ?? []).length > 0 && (
-                  <div style={{ marginTop: 'var(--space-xs)', display: 'flex', gap: 'var(--space-xs)', flexWrap: 'wrap' }}>
-                    {(trip.tags ?? []).map((tag) => (
-                      <span key={tag} className="badge">{tag}</span>
-                    ))}
-                  </div>
-                )}
-              </Link>
-            </li>
-          ))
-        )}
-      </ul>
+      {trips.length === 0 ? (
+        <div className="empty-state" style={{ marginTop: 'var(--space-md)' }}>
+          {allTrips.length === 0 ? (
+            <>
+              <p className="empty-title">אין עדיין טיולים</p>
+              <p className="empty-desc">תתחיל לתכנן את הטיול הבא שלך</p>
+              <Link to="/trip/new" className="btn btn-primary" style={{ textDecoration: 'none' }}>צור טיול ראשון</Link>
+            </>
+          ) : (
+            <p style={{ margin: 0, color: 'var(--color-text-muted)' }}>אין טיולים בעקבות הסינון</p>
+          )}
+        </div>
+      ) : (
+        <div className="trip-card-grid">
+          {trips.map((trip) => (
+            <Link key={trip.id} to={`/trip/${trip.id}`} className="trip-card">
+              <span className="trip-card-name">{trip.name}</span>
+              {trip.destination && <span className="trip-card-dest">{trip.destination}</span>}
+              {(trip.tags ?? []).length > 0 && (
+                <span className="trip-card-tags">
+                  {(trip.tags ?? []).map((tag) => (
+                    <span key={tag} className="badge">{tag}</span>
+                  ))}
+                </span>
+              )}
+              <span className="trip-card-dates">{trip.startDate} – {trip.endDate}</span>
+            </Link>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
