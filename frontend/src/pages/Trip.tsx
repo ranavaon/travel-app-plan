@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { jsPDF } from 'jspdf';
+import { registerHebrewFont } from '../utils/pdfFont';
 import { useTripData } from '../context/TripContext';
 import DayMap, { type MapPoint } from '../components/DayMap';
 import LocationPickerMap from '../components/LocationPickerMap';
@@ -211,9 +212,10 @@ export default function Trip() {
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${exportFileName}.txt`; a.click(); URL.revokeObjectURL(a.href);
     setShowExportDialog(false);
   };
-  const handleExportPdf = () => {
+  const handleExportPdf = async () => {
     const text = buildTripAsText(trip, days, allActivities, accommodations, attractions, shoppingItems, flights);
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    await registerHebrewFont(doc);
     doc.setR2L(true);
     const pageW = (doc as unknown as { getPageWidth?: () => number }).getPageWidth?.() ?? doc.internal.pageSize.getWidth();
     const pageH = (doc as unknown as { getPageHeight?: () => number }).getPageHeight?.() ?? doc.internal.pageSize.getHeight();
